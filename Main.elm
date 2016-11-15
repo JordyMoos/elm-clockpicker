@@ -1,6 +1,7 @@
 module Main exposing (..)
 
 import Html exposing (..)
+import Html.Events exposing (..)
 import Task
 
 
@@ -15,17 +16,18 @@ main =
 
 
 type alias Model =
-  { id : Int
+  { value : String
   }
 
 
 init : (Model, Cmd Msg)
 init =
-  (Model 1, Cmd.none)
+  (Model "", Cmd.none)
 
 
 type Msg
   = NoOp
+  | UpdateValue String
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -34,8 +36,14 @@ update msg model =
     NoOp ->
       (model, Cmd.none)
 
+    UpdateValue value ->
+      ({model | value = value}, Cmd.none)
+
 
 view : Model -> Html Msg
 view model =
   div []
-    [ text "Clockpicker" ]
+    [ p [] [ text "Clockpicker" ]
+    , input [ onInput UpdateValue ] []
+    , text model.value
+    ]
