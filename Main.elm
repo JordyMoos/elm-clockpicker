@@ -5,6 +5,7 @@ import Html exposing (..)
 import Html.Events exposing (..)
 import Html.Attributes exposing (..)
 import Task
+import Mouse exposing (..)
 
 
 dialRadius = 100.0
@@ -47,6 +48,8 @@ type Msg
   | ClosePicker
   | SetHour Int
   | SetMinute Int
+  | DragAt Position
+  | DragEnd Position
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -66,6 +69,25 @@ update msg model =
 
     SetMinute minute ->
       ({model | minute = minute, state = Closed}, Cmd.none)
+
+    DragAt position ->
+      (model, Cmd.none)
+
+    DragEnd position ->
+      (model, Cmd.none)
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  case model.state of
+    Closed ->
+      Sub.none
+
+    HourView ->
+      Sub.batch [ Mouse.moves DragAt, Mouse.ups DragEnd ]
+
+    MinuteView ->
+      Sub.none
 
 
 view : Model -> Html Msg
@@ -132,6 +154,8 @@ drawHourTick tick =
           , ("textAlign", "center")
           , ("width", "26px")
           , ("height", "26px")
+          , ("user-select", "none")
+          , ("cursor", "pointer")
           ]
       , onClick (SetHour tick)
       ]
@@ -186,6 +210,7 @@ drawMinuteTick tick =
         , ("textAlign", "center")
         , ("width", "26px")
         , ("height", "26px")
+        , ("cursor", "pointer")
         ]
       , onClick (SetMinute minute)
       ]
