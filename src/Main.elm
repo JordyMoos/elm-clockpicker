@@ -5,6 +5,7 @@ import Html exposing (..)
 import Html.Events exposing (..)
 import Html.Attributes exposing (..)
 import Mouse exposing (..)
+import Json.Decode as Json
 
 
 dialRadius = 100.0
@@ -27,6 +28,7 @@ type alias Model =
   { state : State
   , hour : Int
   , minute : Int
+  , pos : Position
   }
 
 
@@ -38,7 +40,7 @@ type State
 
 init : (Model, Cmd Msg)
 init =
-  (Model Closed 0 0, Cmd.none)
+  (Model Closed 0 0 <| Position 0 0, Cmd.none)
 
 
 type Msg
@@ -51,6 +53,7 @@ type Msg
   | SetMinute Int
   | DragAt Position
   | DragEnd Position
+  | MouseMove Position
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -83,6 +86,9 @@ update msg model =
     DragEnd position ->
       (model, Cmd.none)
 
+    MouseMove position ->
+      ({model | pos = position}, Cmd.none)
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
@@ -107,6 +113,7 @@ view model =
       ]
       []
     , clockPickerWrapper model
+    , div [ style [("margin-top", "250px")]] [ text (toString model) ]
     ]
 
 
@@ -131,7 +138,9 @@ clockPickerWrapper model =
 drawHourView : Model -> Html Msg
 drawHourView model =
   div
-    [ class "popover clockpicker-popover bottom clockpicker-align-left", style [("display", "block")] ]
+    [ class "popover clockpicker-popover bottom clockpicker-align-left"
+    , style [("display", "block")]
+    ]
     [ div [ class "arrow" ] []
     , viewTitle model
     , viewPopoverContentHour model
@@ -141,6 +150,11 @@ drawHourView model =
       ]
       [ text "Done" ]
     ]
+
+
+offsetPosition : Json.Decoder Position
+offsetPosition =
+    Json.map2 Position (Json.field "offsetX" Json.int) (Json.field "offsetY" Json.int)
 
 
 viewTitle : Model -> Html Msg
@@ -157,7 +171,10 @@ viewPopoverContentHour : Model -> Html Msg
 viewPopoverContentHour model =
   div
     [ class "popover-content" ]
-    [ div [ class "clockpicker-plate" ]
+    [ div
+      [ class "clockpicker-plate"
+      , on "mousemove" (Json.map MouseMove offsetPosition)
+      ]
       [ drawHourTicks model ]
     , span [ class "clockpicker-am-pm-clock" ] []
     ]
