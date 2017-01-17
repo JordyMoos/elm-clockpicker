@@ -4,7 +4,6 @@ import Basics exposing (..)
 import Html exposing (..)
 import Html.Events exposing (..)
 import Html.Attributes exposing (..)
-import Task
 import Mouse exposing (..)
 
 
@@ -20,7 +19,7 @@ main =
     { init = init
     , view = view
     , update = update
-    , subscriptions = \_ -> Sub.none
+    , subscriptions = subscriptions
     }
 
 
@@ -46,6 +45,8 @@ type Msg
   = NoOp
   | OpenPicker
   | ClosePicker
+  | PeakHour Int
+  | PeakMinute Int
   | SetHour Int
   | SetMinute Int
   | DragAt Position
@@ -63,6 +64,12 @@ update msg model =
 
     ClosePicker ->
       ({model | state = Closed}, Cmd.none)
+
+    PeakHour hour ->
+      ({model | hour = hour}, Cmd.none)
+
+    PeakMinute minute ->
+      ({model | minute = minute}, Cmd.none)
 
     SetHour hour ->
       ({model | hour = hour, state = MinuteView}, Cmd.none)
@@ -92,10 +99,7 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-  div
-    [ style [ ("background-color", "green"), ("position", "relative") ]
-    , onBlur ClosePicker
-    ]
+  div []
     [ p [] [ text "Clockpicker" ]
     , input
       [ onClick OpenPicker
@@ -127,14 +131,42 @@ clockPickerWrapper model =
 drawHourView : Model -> Html Msg
 drawHourView model =
   div
-    []
-    [ drawHourTicks model ]
+    [ class "popover clockpicker-popover bottom clockpicker-align-left", style [("display", "block")] ]
+    [ div [ class "arrow" ] []
+    , viewTitle model
+    , viewPopoverContentHour model
+    , button
+      [ class "btn btn-sm btn-default btn-block clockpicker-button"
+      , onClick ClosePicker
+      ]
+      [ text "Done" ]
+    ]
+
+
+viewTitle : Model -> Html Msg
+viewTitle model =
+  div
+    [ class "popover-title" ]
+    [ span [ class "clockpicker-span-hours text-primary" ] [ text (formatHourFull model.hour) ]
+    , text ":"
+    , span [ class "clockpicker-span-minutes" ] [ text (formatMinuteFull model.minute) ]
+    ]
+
+
+viewPopoverContentHour : Model -> Html Msg
+viewPopoverContentHour model =
+  div
+    [ class "popover-content" ]
+    [ div [ class "clockpicker-plate" ]
+      [ drawHourTicks model ]
+    , span [ class "clockpicker-am-pm-clock" ] []
+    ]
 
 
 drawHourTicks : Model -> Html Msg
 drawHourTicks model =
   div
-    []
+    [ class "clockpicker-dial clockpicker-hours" ]
     (List.map drawHourTick (List.range 1 24))
 
 
@@ -147,15 +179,10 @@ drawHourTick tick =
     top = dialRadius - (cos radian) * radius - tickRadius
   in
     div
-      [ style
+      [ class "clockpicker-tick"
+      , style
           [ ("left", (toString left) ++ "px")
           , ("top", (toString top) ++ "px")
-          , ("position", "absolute")
-          , ("textAlign", "center")
-          , ("width", "26px")
-          , ("height", "26px")
-          , ("user-select", "none")
-          , ("cursor", "pointer")
           ]
       , onClick (SetHour tick)
       ]
@@ -182,14 +209,32 @@ formatHourFull hour =
 drawMinuteView : Model -> Html Msg
 drawMinuteView model =
   div
-    []
-    [ drawMinuteTicks model ]
+    [ class "popover clockpicker-popover bottom clockpicker-align-left" ]
+    [ div [ class "arrow" ] []
+    , viewTitle model
+    , viewPopoverContentMinute model
+    , button
+      [ class "btn btn-sm btn-default btn-block clockpicker-button"
+      , onClick ClosePicker
+      ]
+      [ text "Done" ]
+    ]
+
+
+viewPopoverContentMinute : Model -> Html Msg
+viewPopoverContentMinute model =
+  div
+    [ class "popover-content" ]
+    [ div [ class "clockpicker-plate" ]
+      [ drawMinuteTicks model ]
+    , span [ class "clockpicker-am-pm-clock" ] []
+    ]
 
 
 drawMinuteTicks : Model -> Html Msg
 drawMinuteTicks model =
   div
-    []
+    [ class "clockpicker-dial clockpicker-minutes" ]
     (List.map drawMinuteTick (List.range 1 (60 // 5)))
 
 
@@ -203,14 +248,10 @@ drawMinuteTick tick =
     top = dialRadius - (cos radian) * radius - tickRadius
   in
     div
-      [ style
+      [ class "clockpicker-tick"
+      , style
         [ ("left", (toString left) ++ "px")
         , ("top", (toString top) ++ "px")
-        , ("position", "absolute")
-        , ("textAlign", "center")
-        , ("width", "26px")
-        , ("height", "26px")
-        , ("cursor", "pointer")
         ]
       , onClick (SetMinute minute)
       ]
@@ -232,6 +273,3 @@ formatMinuteFull minute =
     "0" ++ (toString minute)
   else
     toString minute
-
-
-
