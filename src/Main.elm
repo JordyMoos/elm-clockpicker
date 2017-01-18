@@ -6,12 +6,15 @@ import Html.Events exposing (..)
 import Html.Attributes exposing (..)
 import Mouse exposing (..)
 import Json.Decode as Json
+import Svg
+import Svg.Attributes
 
 
 dialRadius = 100.0
 outerRadius = 80.0
 innerRadius = 54
 tickRadius = 13.0
+diameter = round <| dialRadius * 2
 
 
 main : Program Never Model Msg
@@ -81,13 +84,16 @@ update msg model =
       ({model | minute = minute, state = Closed}, Cmd.none)
 
     DragAt position ->
-      (model, Cmd.none)
+      -- model ! []
+      ({model | pos = position}, Cmd.none)
 
     DragEnd position ->
-      (model, Cmd.none)
+      -- model ! []
+      ({model | pos = position}, Cmd.none)
 
     MouseMove position ->
-      ({model | pos = position}, Cmd.none)
+      model ! []
+      -- ({model | pos = position}, Cmd.none)
 
 
 subscriptions : Model -> Sub Msg
@@ -154,7 +160,7 @@ drawHourView model =
 
 offsetPosition : Json.Decoder Position
 offsetPosition =
-    Json.map2 Position (Json.field "offsetX" Json.int) (Json.field "offsetY" Json.int)
+  Json.map2 Position (Json.field "offsetX" Json.int) (Json.field "offsetY" Json.int)
 
 
 viewTitle : Model -> Html Msg
@@ -173,11 +179,78 @@ viewPopoverContentHour model =
     [ class "popover-content" ]
     [ div
       [ class "clockpicker-plate"
+      , id "hand-target"
       , on "mousemove" (Json.map MouseMove offsetPosition)
       ]
-      [ drawHourTicks model ]
+      [ drawHourCanvas model
+      , drawHourTicks model
+      ]
     , span [ class "clockpicker-am-pm-clock" ] []
     ]
+
+
+drawHourCanvas : Model -> Html Msg
+drawHourCanvas model =
+  let
+    dialRadiusString = (toString dialRadius)
+    tickRadiusString = (toString tickRadius)
+
+    x = (toFloat model.pos.x) - dialRadius - 15
+    y = (toFloat model.pos.y) - dialRadius - 70
+
+    radianTemp = atan2 x (negate y)
+    radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
+
+    radius = outerRadius
+    unit = 1 / 6 * pi
+    val = round <| radian / unit
+    radianRounded = (toFloat val) * unit
+
+    cx = (sin radianRounded) * radius
+    cy = negate <| (cos radianRounded) * radius
+
+    cxString = toString cx
+    cyString = toString cy
+  in
+    div
+      [ class "clockpicker-canvas" ]
+      [ Svg.svg
+        [ width diameter
+        , height diameter
+        ]
+        [ Svg.g
+          [ Svg.Attributes.transform <| "translate(" ++ dialRadiusString ++ "," ++ dialRadiusString ++ ")" ]
+          [ Svg.line
+            [ Svg.Attributes.x1 "0"
+            , Svg.Attributes.y1 "0"
+            , Svg.Attributes.x2 cxString
+            , Svg.Attributes.y2 cyString
+            ]
+            []
+          , Svg.circle
+            [ Svg.Attributes.class "clockpicker-canvas-fg"
+            , Svg.Attributes.r "3.5"
+            , Svg.Attributes.cx cxString
+            , Svg.Attributes.cy cyString
+            ]
+            []
+          , Svg.circle
+            [ Svg.Attributes.class "clockpicker-canvas-bg"
+            , Svg.Attributes.r tickRadiusString
+            , Svg.Attributes.cx cxString
+            , Svg.Attributes.cy cyString
+            ]
+            []
+          , Svg.circle
+            [ Svg.Attributes.class "clockpicker-canvas-bearing"
+            , Svg.Attributes.r "2"
+            , Svg.Attributes.cx "0"
+            , Svg.Attributes.cy "0"
+            ]
+            []
+          ]
+        ]
+      ]
 
 
 drawHourTicks : Model -> Html Msg
