@@ -8,6 +8,8 @@ import Mouse exposing (..)
 import Json.Decode as Json
 import Svg
 import Svg.Attributes
+import Svg.Events
+import VirtualDom
 
 
 dialRadius = 100.0
@@ -92,8 +94,8 @@ update msg model =
       ({model | pos = position}, Cmd.none)
 
     MouseMove position ->
-      model ! []
-      -- ({model | pos = position}, Cmd.none)
+      -- model ! []
+      ({model | pos = position}, Cmd.none)
 
 
 subscriptions : Model -> Sub Msg
@@ -103,7 +105,7 @@ subscriptions model =
       Sub.none
 
     HourView ->
-      Sub.batch [ Mouse.moves DragAt, Mouse.ups DragEnd ]
+      Sub.none --Sub.batch [ Mouse.moves DragAt, Mouse.ups DragEnd ]
 
     MinuteView ->
       Sub.none
@@ -180,10 +182,10 @@ viewPopoverContentHour model =
     [ div
       [ class "clockpicker-plate"
       , id "hand-target"
-      , on "mousemove" (Json.map MouseMove offsetPosition)
+      -- , on "mousemove" (Json.map MouseMove offsetPosition)
       ]
-      [ drawHourCanvas model
-      , drawHourTicks model
+      [ drawHourTicks model
+      , drawHourCanvas model
       ]
     , span [ class "clockpicker-am-pm-clock" ] []
     ]
@@ -195,8 +197,8 @@ drawHourCanvas model =
     dialRadiusString = (toString dialRadius)
     tickRadiusString = (toString tickRadius)
 
-    x = (toFloat model.pos.x) - dialRadius - 15
-    y = (toFloat model.pos.y) - dialRadius - 70
+    x = (toFloat model.pos.x) - dialRadius
+    y = (toFloat model.pos.y) - dialRadius
 
     radianTemp = atan2 x (negate y)
     radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
@@ -213,13 +215,15 @@ drawHourCanvas model =
     cyString = toString cy
   in
     div
-      [ class "clockpicker-canvas" ]
+      [ class "clockpicker-canvas"
+      ]
       [ Svg.svg
         [ width diameter
         , height diameter
         ]
         [ Svg.g
-          [ Svg.Attributes.transform <| "translate(" ++ dialRadiusString ++ "," ++ dialRadiusString ++ ")" ]
+          [ Svg.Attributes.transform <| "translate(" ++ dialRadiusString ++ "," ++ dialRadiusString ++ ")"
+          ]
           [ Svg.line
             [ Svg.Attributes.x1 "0"
             , Svg.Attributes.y1 "0"
@@ -249,8 +253,18 @@ drawHourCanvas model =
             ]
             []
           ]
+        , Svg.rect
+          [ width diameter
+          , height diameter
+          , VirtualDom.onWithOptions "mousemove" onOptions (Json.map MouseMove offsetPosition)
+          , Svg.Attributes.fillOpacity "0.0"
+          ]
+          []
         ]
       ]
+
+
+onOptions = { preventDefault = True, stopPropagation = True }
 
 
 drawHourTicks : Model -> Html Msg
