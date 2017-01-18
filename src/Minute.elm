@@ -1,4 +1,4 @@
-module Hour exposing (viewPopoverContentHour, formatHour, formatHourFull)
+module Minute exposing (viewPopoverContentMinute, formatMinute, formatMinuteFull)
 
 import Basics exposing (..)
 import Html exposing (..)
@@ -20,24 +20,23 @@ offsetPosition =
   Json.map2 Position (Json.field "offsetX" Json.int) (Json.field "offsetY" Json.int)
 
 
-viewPopoverContentHour : Model -> Html Msg
-viewPopoverContentHour model =
+viewPopoverContentMinute : Model -> Html Msg
+viewPopoverContentMinute model =
   div
     [ class "popover-content" ]
     [ div
-      [ class "clockpicker-plate"
-      , id "hand-target"
-      -- , on "mousemove" (Json.map MouseMove offsetPosition)
-      ]
-      [ drawHourTicks model
-      , drawHourCanvas model
-      ]
+        [ class "clockpicker-plate"
+        , id "hand-target"
+        ]
+        [ drawMinuteTicks model
+        , drawMinuteCanvas model
+        ]
     , span [ class "clockpicker-am-pm-clock" ] []
     ]
 
 
-drawHourCanvas : Model -> Html Msg
-drawHourCanvas model =
+drawMinuteCanvas : Model -> Html Msg
+drawMinuteCanvas model =
   let
 
     x = (toFloat model.pos.x) - dialRadius
@@ -46,13 +45,12 @@ drawHourCanvas model =
     radianTemp = atan2 x (negate y)
     radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
 
-    unit = 1 / 6 * pi
+    unit = 1 / 30 * pi
     val = round <| radian / unit
     radianRounded = (toFloat val) * unit
 
     z = sqrt <| x * x + y * y
-    isInner = if z < ((outerRadius + innerRadius) / 2) then True else False
-    radius = if isInner then innerRadius else outerRadius
+    radius = outerRadius
 
     cx = (sin radianRounded) * radius
     cy = negate <| (cos radianRounded) * radius
@@ -62,7 +60,7 @@ drawHourCanvas model =
   in
     div
       [ class "clockpicker-canvas"
-      , onClick ClickHour
+      , onClick ClickMinute
       ]
       [ Svg.svg
         [ width diameter
@@ -113,17 +111,18 @@ drawHourCanvas model =
       ]
 
 
-drawHourTicks : Model -> Html Msg
-drawHourTicks model =
+drawMinuteTicks : Model -> Html Msg
+drawMinuteTicks model =
   div
-    [ class "clockpicker-dial clockpicker-hours" ]
-    (List.map drawHourTick (List.range 1 24))
+    [ class "clockpicker-dial clockpicker-minutes" ]
+    (List.map drawMinuteTick (List.range 1 (60 // 5)))
 
 
-drawHourTick : Int -> Html Msg
-drawHourTick tick =
+drawMinuteTick : Int -> Html Msg
+drawMinuteTick tick =
   let
-    radius = if tick > 12 then innerRadius else outerRadius
+    minute = tick * 5
+    radius = outerRadius
     radian = (toFloat tick) / 6 * pi
     left = dialRadius + (sin radian) * radius - tickRadius
     top = dialRadius - (cos radian) * radius - tickRadius
@@ -131,26 +130,26 @@ drawHourTick tick =
     div
       [ class "clockpicker-tick"
       , style
-          [ ("left", (toString left) ++ "px")
-          , ("top", (toString top) ++ "px")
-          ]
-      , onClick (SetHour tick)
+        [ ("left", (toString left) ++ "px")
+        , ("top", (toString top) ++ "px")
+        ]
+      , onClick (SetMinute minute)
       ]
-      [ text (formatHour tick)  ]
+      [ text (formatMinute minute) ]
 
 
-formatHour : Int -> String
-formatHour hour =
-  case hour of
-    24 -> "00"
-    _ -> toString hour
+formatMinute : Int -> String
+formatMinute minute =
+  case minute of
+    60 -> "00"
+    _ -> toString minute
 
 
-formatHourFull : Int -> String
-formatHourFull hour =
-  if hour == 24 then
+formatMinuteFull : Int -> String
+formatMinuteFull minute =
+  if minute == 60 then
     "00"
-  else if hour < 10 then
-    "0" ++ (toString hour)
+  else if minute < 10 then
+    "0" ++ (toString minute)
   else
-    (toString hour)
+    toString minute

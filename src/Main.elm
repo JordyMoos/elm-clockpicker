@@ -14,6 +14,7 @@ import VirtualDom
 import Model exposing (..)
 import Msg exposing (Msg(..))
 import Hour exposing (..)
+import Minute exposing (..)
 
 
 main : Program Never Model Msg
@@ -35,15 +36,15 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     NoOp ->
-      (model, Cmd.none)
+      model ! []
 
     OpenPicker ->
-      ({model | state = HourView}, Cmd.none)
+      { model | state = HourView } ! []
 
     ClosePicker ->
-      ({model | state = Closed}, Cmd.none)
+      { model | state = Closed } ! []
 
-    GuessHour ->
+    ClickHour ->
       let
         x = (toFloat model.pos.x) - dialRadius
         y = (toFloat model.pos.y) - dialRadius
@@ -58,25 +59,35 @@ update msg model =
         val = round <| radian / unit
         hour = valToHour val isInner
       in
-        {model | hour = hour, state = MinuteView} ! []
+        { model | hour = hour, state = MinuteView } ! []
+
+    ClickMinute ->
+      let
+        x = (toFloat model.pos.x) - dialRadius
+        y = (toFloat model.pos.y) - dialRadius
+
+        radianTemp = atan2 x (negate y)
+        radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
+
+        unit = 1 / 30 * pi
+        val = round <| radian / unit
+      in
+        { model | minute = val, state = Closed } ! []
 
     SetHour hour ->
-      ({model | hour = hour, state = MinuteView}, Cmd.none)
+      { model | hour = hour, state = MinuteView } ! []
 
     SetMinute minute ->
-      ({model | minute = minute, state = Closed}, Cmd.none)
+      { model | minute = minute, state = Closed } ! []
 
     DragAt position ->
-      -- model ! []
-      ({model | pos = position}, Cmd.none)
+      { model | pos = position } ! []
 
     DragEnd position ->
-      -- model ! []
-      ({model | pos = position}, Cmd.none)
+      { model | pos = position } ! []
 
     MouseMove position ->
-      -- model ! []
-      ({model | pos = position}, Cmd.none)
+      { model | pos = position } ! []
 
 
 valToHour : Int -> Bool -> Int
@@ -148,10 +159,10 @@ drawHourView model =
     , viewTitle model
     , viewPopoverContentHour model
     , button
-      [ class "btn btn-sm btn-default btn-block clockpicker-button"
-      , onClick ClosePicker
-      ]
-      [ text "Done" ]
+        [ class "btn btn-sm btn-default btn-block clockpicker-button"
+        , onClick ClosePicker
+        ]
+        [ text "Done" ]
     ]
 
 
@@ -159,9 +170,13 @@ viewTitle : Model -> Html Msg
 viewTitle model =
   div
     [ class "popover-title" ]
-    [ span [ class "clockpicker-span-hours text-primary" ] [ text (formatHourFull model.hour) ]
+    [ span
+        [ class "clockpicker-span-hours text-primary" ]
+        [ text (formatHourFull model.hour) ]
     , text ":"
-    , span [ class "clockpicker-span-minutes" ] [ text (formatMinuteFull model.minute) ]
+    , span
+        [ class "clockpicker-span-minutes" ]
+        [ text (formatMinuteFull model.minute) ]
     ]
 
 
@@ -173,62 +188,8 @@ drawMinuteView model =
     , viewTitle model
     , viewPopoverContentMinute model
     , button
-      [ class "btn btn-sm btn-default btn-block clockpicker-button"
-      , onClick ClosePicker
-      ]
-      [ text "Done" ]
-    ]
-
-
-viewPopoverContentMinute : Model -> Html Msg
-viewPopoverContentMinute model =
-  div
-    [ class "popover-content" ]
-    [ div [ class "clockpicker-plate" ]
-      [ drawMinuteTicks model ]
-    , span [ class "clockpicker-am-pm-clock" ] []
-    ]
-
-
-drawMinuteTicks : Model -> Html Msg
-drawMinuteTicks model =
-  div
-    [ class "clockpicker-dial clockpicker-minutes" ]
-    (List.map drawMinuteTick (List.range 1 (60 // 5)))
-
-
-drawMinuteTick : Int -> Html Msg
-drawMinuteTick tick =
-  let
-    minute = tick * 5
-    radius = outerRadius
-    radian = (toFloat tick) / 6 * pi
-    left = dialRadius + (sin radian) * radius - tickRadius
-    top = dialRadius - (cos radian) * radius - tickRadius
-  in
-    div
-      [ class "clockpicker-tick"
-      , style
-        [ ("left", (toString left) ++ "px")
-        , ("top", (toString top) ++ "px")
+        [ class "btn btn-sm btn-default btn-block clockpicker-button"
+        , onClick ClosePicker
         ]
-      , onClick (SetMinute minute)
-      ]
-      [ text (formatMinute minute) ]
-
-
-formatMinute : Int -> String
-formatMinute minute =
-  case minute of
-    60 -> "00"
-    _ -> toString minute
-
-
-formatMinuteFull : Int -> String
-formatMinuteFull minute =
-  if minute == 60 then
-    "00"
-  else if minute < 10 then
-    "0" ++ (toString minute)
-  else
-    toString minute
+        [ text "Done" ]
+    ]

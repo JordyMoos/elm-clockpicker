@@ -12,4 +12,5 @@ type Msg
   | DragAt Position
   | DragEnd Position
   | MouseMove Position
-  | GuessHour
+  | ClickHour
+  | ClickMinute
