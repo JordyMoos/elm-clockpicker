@@ -14,6 +14,10 @@ import VirtualDom
 
 dialRadius = 100.0
 outerRadius = 80.0
+
+dialRadiusString = toString dialRadius
+tickRadiusString = toString tickRadius
+
 innerRadius = 54
 tickRadius = 13.0
 diameter = round <| dialRadius * 2
@@ -194,8 +198,6 @@ viewPopoverContentHour model =
 drawHourCanvas : Model -> Html Msg
 drawHourCanvas model =
   let
-    dialRadiusString = (toString dialRadius)
-    tickRadiusString = (toString tickRadius)
 
     x = (toFloat model.pos.x) - dialRadius
     y = (toFloat model.pos.y) - dialRadius
@@ -203,7 +205,10 @@ drawHourCanvas model =
     radianTemp = atan2 x (negate y)
     radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
 
-    radius = outerRadius
+    z = sqrt <| x * x + y * y
+    isInner = if z < ((outerRadius + innerRadius) / 2) then True else False
+    radius = if isInner then innerRadius else outerRadius
+
     unit = 1 / 6 * pi
     val = round <| radian / unit
     radianRounded = (toFloat val) * unit
@@ -243,6 +248,7 @@ drawHourCanvas model =
             , Svg.Attributes.r tickRadiusString
             , Svg.Attributes.cx cxString
             , Svg.Attributes.cy cyString
+            , Svg.Attributes.fillOpacity "0.5"
             ]
             []
           , Svg.circle
