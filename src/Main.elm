@@ -63,6 +63,7 @@ type Msg
   | DragAt Position
   | DragEnd Position
   | MouseMove Position
+  | GuessHour
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -83,6 +84,23 @@ update msg model =
     PeakMinute minute ->
       ({model | minute = minute}, Cmd.none)
 
+    GuessHour ->
+      let
+        x = (toFloat model.pos.x) - dialRadius
+        y = (toFloat model.pos.y) - dialRadius
+
+        radianTemp = atan2 x (negate y)
+        radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
+
+        z = sqrt <| x * x + y * y
+        isInner = if z < ((outerRadius + innerRadius) / 2) then True else False
+
+        unit = 1 / 6 * pi
+        val = round <| radian / unit
+        hour = valToHour val isInner
+      in
+        {model | hour = hour, state = MinuteView} ! []
+
     SetHour hour ->
       ({model | hour = hour, state = MinuteView}, Cmd.none)
 
@@ -100,6 +118,16 @@ update msg model =
     MouseMove position ->
       -- model ! []
       ({model | pos = position}, Cmd.none)
+
+
+valToHour : Int -> Bool -> Int
+valToHour val isInner =
+  let
+    zeroCompensated = if val == 0 then 12 else val
+    innerCompensated = if isInner then zeroCompensated + 12 else zeroCompensated
+    lastHourCompensated = if innerCompensated == 24 then 0 else innerCompensated
+  in
+    lastHourCompensated
 
 
 subscriptions : Model -> Sub Msg
@@ -205,13 +233,13 @@ drawHourCanvas model =
     radianTemp = atan2 x (negate y)
     radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
 
-    z = sqrt <| x * x + y * y
-    isInner = if z < ((outerRadius + innerRadius) / 2) then True else False
-    radius = if isInner then innerRadius else outerRadius
-
     unit = 1 / 6 * pi
     val = round <| radian / unit
     radianRounded = (toFloat val) * unit
+
+    z = sqrt <| x * x + y * y
+    isInner = if z < ((outerRadius + innerRadius) / 2) then True else False
+    radius = if isInner then innerRadius else outerRadius
 
     cx = (sin radianRounded) * radius
     cy = negate <| (cos radianRounded) * radius
@@ -221,6 +249,7 @@ drawHourCanvas model =
   in
     div
       [ class "clockpicker-canvas"
+      , onClick GuessHour
       ]
       [ Svg.svg
         [ width diameter
@@ -267,6 +296,7 @@ drawHourCanvas model =
           ]
           []
         ]
+      , p [] [ text <| toString val ]
       ]
 
 
