@@ -4,7 +4,7 @@
 elm package install JordyMoos/elm-clockpicker
 ```
 
-A reusable date picker component in Elm.
+A reusable clock picker component in Elm.
 
 
 ## Examples
@@ -23,10 +23,10 @@ See the [examples][examples] folder.
 
 ## CSS
 
-The CSS for the date picker is distributed separately.  You can grab
+The CSS for the clock picker is distributed separately.  You can grab
 the compiled CSS from [here][compiled].
 
-[compiled]: https://github.com/Bogdanp/elm-datepicker/blob/master/css/elm-datepicker.css
+[compiled]: https://github.com/JordyMoos/elm-clockpicker/blob/master/css/elm-clockpicker.css
 
 
 ## Additional copyright notices
