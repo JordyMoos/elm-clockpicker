@@ -1,7 +1,7 @@
 {
     "version": "0.1.0",
     "summary": "A clock picker component",
-    "repository": "https://github.com/JordyMoos/elm-clockpicker",
+    "repository": "https://github.com/JordyMoos/elm-clockpicker.git",
     "license": "BSD3",
     "source-directories": [
         "examples/simple",
