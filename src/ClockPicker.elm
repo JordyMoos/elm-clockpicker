@@ -160,15 +160,13 @@ valToHour val isInner =
 -}
 view : ClockPicker -> Html Msg
 view (ClockPicker ({ state, pos, hour, minute } as model)) =
-  div []
-    [ p [] [ text "Clockpicker" ]
-    , input
+  div [ class "clockpicker-container" ]
+    [ input
         [ onClick OpenPicker
         , value (formatTime model)
         ]
         []
     , clockPickerWrapper model
-    , div [ style [("margin-top", "250px")]] [ text (toString model) ]
     ]
 
 
