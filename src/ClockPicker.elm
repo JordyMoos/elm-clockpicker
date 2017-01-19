@@ -16,22 +16,34 @@ import Mouse exposing (..)
 import Json.Decode as Json
 import Svg
 import Svg.Attributes
-import Svg.Events
 import VirtualDom
 
 
-
+dialRadius : Float
 dialRadius = 100.0
+
+outerRadius : Float
 outerRadius = 80.0
 
+dialRadiusString : String
 dialRadiusString = toString dialRadius
+
+tickRadiusString : String
 tickRadiusString = toString tickRadius
 
+innerRadius : Float
 innerRadius = 54
+
+tickRadius : Float
 tickRadius = 13.0
+
+diameter : Int
 diameter = round <| dialRadius * 2
 
+hourStep : Int
 hourStep = 1
+
+minuteStep : Int
 minuteStep = 5
 
 
@@ -112,7 +124,7 @@ update msg (ClockPicker ({ state, pos, hour, minute } as model)) =
         z = sqrt <| x * x + y * y
         isInner = if z < ((outerRadius + innerRadius) / 2) then True else False
 
-        unit = hourStep / 6 * pi
+        unit = (toFloat hourStep) / 6 * pi
         val = hourStep * (round <| radian / unit)
         hour = valToHour val isInner
       in
@@ -126,7 +138,7 @@ update msg (ClockPicker ({ state, pos, hour, minute } as model)) =
         radianTemp = atan2 x (negate y)
         radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
 
-        unit = minuteStep / 30 * pi
+        unit = (toFloat minuteStep) / 30 * pi
         val = minuteStep * (round <| radian / unit)
       in
         { model | minute = val, state = Closed } ! []
@@ -302,7 +314,7 @@ drawMinuteCanvas model =
     radianTemp = atan2 x (negate y)
     radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
 
-    unit = minuteStep / 30 * pi
+    unit = (toFloat minuteStep) / 30 * pi
     val = round <| radian / unit
     radianRounded = (toFloat val) * unit
 
@@ -470,7 +482,7 @@ drawHourCanvas model =
     radianTemp = atan2 x (negate y)
     radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
 
-    unit = hourStep / 6 * pi
+    unit = (toFloat hourStep) / 6 * pi
     val = round <| radian / unit
     radianRounded = (toFloat val) * unit
 
