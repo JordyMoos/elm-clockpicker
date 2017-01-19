@@ -1,4 +1,4 @@
-module Minute exposing (viewPopoverContentMinute, formatMinute, formatMinuteFull)
+module ClockPicker.Minute exposing (viewPopoverContentMinute, formatMinute, formatMinuteFull)
 
 import Basics exposing (..)
 import Html exposing (..)
@@ -11,8 +11,8 @@ import Svg.Attributes
 import Svg.Events
 import VirtualDom
 
-import Model exposing (..)
-import Msg exposing (..)
+import ClockPicker.Model exposing (..)
+import ClockPicker.Msg exposing (..)
 
 
 offsetPosition : Json.Decoder Position

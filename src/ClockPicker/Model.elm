@@ -1,4 +1,4 @@
-module Model exposing (..)
+module ClockPicker.Model exposing (..)
 
 import Mouse exposing (..)
 
@@ -23,6 +23,10 @@ type alias Model =
   , minute : Int
   , pos : Position
   }
+
+
+type ClockPicker
+  = ClockPicker Model
 
 
 type State

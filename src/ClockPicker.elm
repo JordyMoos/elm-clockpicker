@@ -1,4 +1,4 @@
-module Main exposing (..)
+module ClockPicker exposing (Msg, ClockPicker)
 
 import Basics exposing (..)
 import Html exposing (..)
@@ -11,13 +11,13 @@ import Svg.Attributes
 import Svg.Events
 import VirtualDom
 
-import Model exposing (..)
-import Msg exposing (Msg(..))
-import Hour exposing (..)
-import Minute exposing (..)
+import ClockPicker.Model exposing (..)
+import ClockPicker.Msg exposing (Msg(..))
+import ClockPicker.Hour exposing (..)
+import ClockPicker.Minute exposing (..)
 
 
-main : Program Never Model Msg
+main : Program Never ClockPicker Msg
 main =
   Html.program
     { init = init
@@ -27,12 +27,12 @@ main =
     }
 
 
-init : (Model, Cmd Msg)
+init : ( ClockPicker, Cmd Msg )
 init =
-  (Model Closed 0 0 <| Position 0 0, Cmd.none)
+  ( ClockPicker Closed 0 0 <| Position 0 0, Cmd.none )
 
 
-update : Msg -> Model -> (Model, Cmd Msg)
+update : Msg -> ClockPicker -> ( ClockPicker, Cmd Msg )
 update msg model =
   case msg of
     NoOp ->
@@ -99,7 +99,7 @@ valToHour val isInner =
     innerCompensated
 
 
-subscriptions : Model -> Sub Msg
+subscriptions : ClockPicker -> Sub Msg
 subscriptions model =
   case model.state of
     Closed ->
@@ -112,7 +112,7 @@ subscriptions model =
       Sub.none
 
 
-view : Model -> Html Msg
+view : ClockPicker -> Html Msg
 view model =
   div []
     [ p [] [ text "Clockpicker" ]
@@ -131,12 +131,12 @@ offsetPosition =
   Json.map2 Position (Json.field "offsetX" Json.int) (Json.field "offsetY" Json.int)
 
 
-formatTime : Model -> String
+formatTime : ClockPicker -> String
 formatTime model =
   (formatHourFull model.hour) ++ ":" ++ (formatMinuteFull model.minute)
 
 
-clockPickerWrapper : Model -> Html Msg
+clockPickerWrapper : ClockPicker -> Html Msg
 clockPickerWrapper model =
   case model.state of
     Closed ->
@@ -149,7 +149,7 @@ clockPickerWrapper model =
       drawMinuteView model
 
 
-drawHourView : Model -> Html Msg
+drawHourView : ClockPicker -> Html Msg
 drawHourView model =
   div
     [ class "popover clockpicker-popover bottom clockpicker-align-left"
@@ -166,7 +166,7 @@ drawHourView model =
     ]
 
 
-viewTitle : Model -> Html Msg
+viewTitle : ClockPicker -> Html Msg
 viewTitle model =
   div
     [ class "popover-title" ]
@@ -180,7 +180,7 @@ viewTitle model =
     ]
 
 
-drawMinuteView : Model -> Html Msg
+drawMinuteView : ClockPicker -> Html Msg
 drawMinuteView model =
   div
     [ class "popover clockpicker-popover bottom clockpicker-align-left" ]

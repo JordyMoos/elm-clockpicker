@@ -1,4 +1,4 @@
-module Msg exposing (..)
+module ClockPicker.Msg exposing (..)
 
 import Mouse exposing (..)
 
