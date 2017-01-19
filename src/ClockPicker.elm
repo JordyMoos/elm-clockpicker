@@ -1,4 +1,12 @@
-module ClockPicker exposing (Msg, ClockPicker)
+module ClockPicker exposing (Msg, ClockPicker, Time, init, view, update)
+
+{-| A customizable clock picker component.
+
+# Clock
+@docs Msg, ClockPicker, Time
+@docs init, update, view
+
+-}
 
 import Basics exposing (..)
 import Html exposing (..)
@@ -11,29 +19,78 @@ import Svg.Attributes
 import Svg.Events
 import VirtualDom
 
-import ClockPicker.Model exposing (..)
-import ClockPicker.Msg exposing (Msg(..))
-import ClockPicker.Hour exposing (..)
-import ClockPicker.Minute exposing (..)
 
 
-main : Program Never ClockPicker Msg
-main =
-  Html.program
-    { init = init
-    , view = view
-    , update = update
-    , subscriptions = subscriptions
-    }
+dialRadius = 100.0
+outerRadius = 80.0
+
+dialRadiusString = toString dialRadius
+tickRadiusString = toString tickRadius
+
+innerRadius = 54
+tickRadius = 13.0
+diameter = round <| dialRadius * 2
+
+hourStep = 1
+minuteStep = 5
 
 
+type alias Model =
+  { state : State
+  , hour : Int
+  , minute : Int
+  , pos : Position
+  }
+
+{-| The time response record
+-}
+type alias Time =
+  { hour : Int
+  , minute : Int
+  }
+
+{-| The ClockPicker model.
+-}
+type ClockPicker
+  = ClockPicker Model
+
+
+type State
+  = HourView
+  | MinuteView
+  | Closed
+
+{-| An opaque type representing messages that are passed inside the ClockPicker.
+-}
+type Msg
+  = NoOp
+  | OpenPicker
+  | ClosePicker
+  | SetHour Int
+  | SetMinute Int
+  | DragAt Position
+  | DragEnd Position
+  | MouseMove Position
+  | ClickHour
+  | ClickMinute
+
+
+(!) : Model -> List (Cmd Msg) -> ( ClockPicker, Cmd Msg )
+(!) m cs =
+    ( ClockPicker m, Cmd.batch cs )
+
+
+{-| init
+-}
 init : ( ClockPicker, Cmd Msg )
 init =
-  ( ClockPicker Closed 0 0 <| Position 0 0, Cmd.none )
+  ( ClockPicker <| Model Closed 0 0 <| Position 0 0, Cmd.none )
 
 
+{-| update
+-}
 update : Msg -> ClockPicker -> ( ClockPicker, Cmd Msg )
-update msg model =
+update msg (ClockPicker ({ state, pos, hour, minute } as model)) =
   case msg of
     NoOp ->
       model ! []
@@ -46,8 +103,8 @@ update msg model =
 
     ClickHour ->
       let
-        x = (toFloat model.pos.x) - dialRadius
-        y = (toFloat model.pos.y) - dialRadius
+        x = (toFloat pos.x) - dialRadius
+        y = (toFloat pos.y) - dialRadius
 
         radianTemp = atan2 x (negate y)
         radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
@@ -63,8 +120,8 @@ update msg model =
 
     ClickMinute ->
       let
-        x = (toFloat model.pos.x) - dialRadius
-        y = (toFloat model.pos.y) - dialRadius
+        x = (toFloat pos.x) - dialRadius
+        y = (toFloat pos.y) - dialRadius
 
         radianTemp = atan2 x (negate y)
         radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
@@ -99,21 +156,10 @@ valToHour val isInner =
     innerCompensated
 
 
-subscriptions : ClockPicker -> Sub Msg
-subscriptions model =
-  case model.state of
-    Closed ->
-      Sub.none
-
-    HourView ->
-      Sub.none --Sub.batch [ Mouse.moves DragAt, Mouse.ups DragEnd ]
-
-    MinuteView ->
-      Sub.none
-
-
+{-| view
+-}
 view : ClockPicker -> Html Msg
-view model =
+view (ClockPicker ({ state, pos, hour, minute } as model)) =
   div []
     [ p [] [ text "Clockpicker" ]
     , input
@@ -131,12 +177,12 @@ offsetPosition =
   Json.map2 Position (Json.field "offsetX" Json.int) (Json.field "offsetY" Json.int)
 
 
-formatTime : ClockPicker -> String
+formatTime : Model -> String
 formatTime model =
   (formatHourFull model.hour) ++ ":" ++ (formatMinuteFull model.minute)
 
 
-clockPickerWrapper : ClockPicker -> Html Msg
+clockPickerWrapper : Model -> Html Msg
 clockPickerWrapper model =
   case model.state of
     Closed ->
@@ -149,7 +195,7 @@ clockPickerWrapper model =
       drawMinuteView model
 
 
-drawHourView : ClockPicker -> Html Msg
+drawHourView : Model -> Html Msg
 drawHourView model =
   div
     [ class "popover clockpicker-popover bottom clockpicker-align-left"
@@ -166,7 +212,7 @@ drawHourView model =
     ]
 
 
-viewTitle : ClockPicker -> Html Msg
+viewTitle : Model -> Html Msg
 viewTitle model =
   div
     [ class "popover-title" ]
@@ -180,7 +226,7 @@ viewTitle model =
     ]
 
 
-drawMinuteView : ClockPicker -> Html Msg
+drawMinuteView : Model -> Html Msg
 drawMinuteView model =
   div
     [ class "popover clockpicker-popover bottom clockpicker-align-left" ]
@@ -193,3 +239,343 @@ drawMinuteView model =
         ]
         [ text "Done" ]
     ]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+viewPopoverContentMinute : Model -> Html Msg
+viewPopoverContentMinute model =
+  div
+    [ class "popover-content" ]
+    [ div
+        [ class "clockpicker-plate"
+        , id "hand-target"
+        ]
+        [ drawMinuteTicks model
+        , drawMinuteCanvas model
+        ]
+    , span [ class "clockpicker-am-pm-clock" ] []
+    ]
+
+
+drawMinuteCanvas : Model -> Html Msg
+drawMinuteCanvas model =
+  let
+
+    x = (toFloat model.pos.x) - dialRadius
+    y = (toFloat model.pos.y) - dialRadius
+
+    radianTemp = atan2 x (negate y)
+    radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
+
+    unit = minuteStep / 30 * pi
+    val = round <| radian / unit
+    radianRounded = (toFloat val) * unit
+
+    z = sqrt <| x * x + y * y
+    radius = outerRadius
+
+    cx = (sin radianRounded) * radius
+    cy = negate <| (cos radianRounded) * radius
+
+    cxString = toString cx
+    cyString = toString cy
+  in
+    div
+      [ class "clockpicker-canvas"
+      , onClick ClickMinute
+      ]
+      [ Svg.svg
+        [ width diameter
+        , height diameter
+        ]
+        [ Svg.g
+          [ Svg.Attributes.transform <| "translate(" ++ dialRadiusString ++ "," ++ dialRadiusString ++ ")"
+          ]
+          [ Svg.line
+            [ Svg.Attributes.x1 "0"
+            , Svg.Attributes.y1 "0"
+            , Svg.Attributes.x2 cxString
+            , Svg.Attributes.y2 cyString
+            ]
+            []
+          , Svg.circle
+            [ Svg.Attributes.class "clockpicker-canvas-fg"
+            , Svg.Attributes.r "3.5"
+            , Svg.Attributes.cx cxString
+            , Svg.Attributes.cy cyString
+            ]
+            []
+          , Svg.circle
+            [ Svg.Attributes.class "clockpicker-canvas-bg"
+            , Svg.Attributes.r tickRadiusString
+            , Svg.Attributes.cx cxString
+            , Svg.Attributes.cy cyString
+            , Svg.Attributes.fillOpacity "0.5"
+            ]
+            []
+          , Svg.circle
+            [ Svg.Attributes.class "clockpicker-canvas-bearing"
+            , Svg.Attributes.r "2"
+            , Svg.Attributes.cx "0"
+            , Svg.Attributes.cy "0"
+            ]
+            []
+          ]
+        , Svg.rect
+          [ width diameter
+          , height diameter
+          , VirtualDom.on "mousemove" (Json.map MouseMove offsetPosition)
+          , Svg.Attributes.fillOpacity "0"
+          ]
+          []
+        ]
+      ]
+
+
+drawMinuteTicks : Model -> Html Msg
+drawMinuteTicks model =
+  div
+    [ class "clockpicker-dial clockpicker-minutes" ]
+    (List.map drawMinuteTick (List.range 1 (60 // 5)))
+
+
+drawMinuteTick : Int -> Html Msg
+drawMinuteTick tick =
+  let
+    minute = tick * 5
+    radius = outerRadius
+    radian = (toFloat tick) / 6 * pi
+    left = dialRadius + (sin radian) * radius - tickRadius
+    top = dialRadius - (cos radian) * radius - tickRadius
+  in
+    div
+      [ class "clockpicker-tick"
+      , style
+        [ ("left", (toString left) ++ "px")
+        , ("top", (toString top) ++ "px")
+        ]
+      , onClick (SetMinute minute)
+      ]
+      [ text (formatMinute minute) ]
+
+
+formatMinute : Int -> String
+formatMinute minute =
+  case minute of
+    60 -> "00"
+    _ -> toString minute
+
+
+formatMinuteFull : Int -> String
+formatMinuteFull minute =
+  if minute == 60 then
+    "00"
+  else if minute < 10 then
+    "0" ++ (toString minute)
+  else
+    toString minute
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+viewPopoverContentHour : Model -> Html Msg
+viewPopoverContentHour model =
+  div
+    [ class "popover-content" ]
+    [ div
+        [ class "clockpicker-plate"
+        , id "hand-target"
+        ]
+        [ drawHourTicks model
+        , drawHourCanvas model
+        ]
+    , span [ class "clockpicker-am-pm-clock" ] []
+    ]
+
+
+drawHourCanvas : Model -> Html Msg
+drawHourCanvas model =
+  let
+
+    x = (toFloat model.pos.x) - dialRadius
+    y = (toFloat model.pos.y) - dialRadius
+
+    radianTemp = atan2 x (negate y)
+    radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
+
+    unit = hourStep / 6 * pi
+    val = round <| radian / unit
+    radianRounded = (toFloat val) * unit
+
+    z = sqrt <| x * x + y * y
+    isInner = if z < ((outerRadius + innerRadius) / 2) then True else False
+    radius = if isInner then innerRadius else outerRadius
+
+    cx = (sin radianRounded) * radius
+    cy = negate <| (cos radianRounded) * radius
+
+    cxString = toString cx
+    cyString = toString cy
+  in
+    div
+      [ class "clockpicker-canvas"
+      , onClick ClickHour
+      ]
+      [ Svg.svg
+        [ width diameter
+        , height diameter
+        ]
+        [ Svg.g
+          [ Svg.Attributes.transform <| "translate(" ++ dialRadiusString ++ "," ++ dialRadiusString ++ ")"
+          ]
+          [ Svg.line
+            [ Svg.Attributes.x1 "0"
+            , Svg.Attributes.y1 "0"
+            , Svg.Attributes.x2 cxString
+            , Svg.Attributes.y2 cyString
+            ]
+            []
+          , Svg.circle
+            [ Svg.Attributes.class "clockpicker-canvas-fg"
+            , Svg.Attributes.r "3.5"
+            , Svg.Attributes.cx cxString
+            , Svg.Attributes.cy cyString
+            ]
+            []
+          , Svg.circle
+            [ Svg.Attributes.class "clockpicker-canvas-bg"
+            , Svg.Attributes.r tickRadiusString
+            , Svg.Attributes.cx cxString
+            , Svg.Attributes.cy cyString
+            , Svg.Attributes.fillOpacity "0.5"
+            ]
+            []
+          , Svg.circle
+            [ Svg.Attributes.class "clockpicker-canvas-bearing"
+            , Svg.Attributes.r "2"
+            , Svg.Attributes.cx "0"
+            , Svg.Attributes.cy "0"
+            ]
+            []
+          ]
+        , Svg.rect
+          [ width diameter
+          , height diameter
+          , VirtualDom.on "mousemove" (Json.map MouseMove offsetPosition)
+          , Svg.Attributes.fillOpacity "0"
+          ]
+          []
+        ]
+      ]
+
+
+drawHourTicks : Model -> Html Msg
+drawHourTicks model =
+  div
+    [ class "clockpicker-dial clockpicker-hours" ]
+    (List.map drawHourTick (List.range 1 24))
+
+
+drawHourTick : Int -> Html Msg
+drawHourTick tick =
+  let
+    radius = if tick > 12 then innerRadius else outerRadius
+    radian = (toFloat tick) / 6 * pi
+    left = dialRadius + (sin radian) * radius - tickRadius
+    top = dialRadius - (cos radian) * radius - tickRadius
+  in
+    div
+      [ class "clockpicker-tick"
+      , style
+          [ ("left", (toString left) ++ "px")
+          , ("top", (toString top) ++ "px")
+          ]
+      , onClick (SetHour tick)
+      ]
+      [ text (formatHour tick)  ]
+
+
+formatHour : Int -> String
+formatHour hour =
+  case hour of
+    24 -> "00"
+    _ -> toString hour
+
+
+formatHourFull : Int -> String
+formatHourFull hour =
+  if hour == 24 then
+    "00"
+  else if hour < 10 then
+    "0" ++ (toString hour)
+  else
+    (toString hour)

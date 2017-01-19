@@ -1,76 +1,65 @@
 module Simple exposing (main)
 
-import Date exposing (Date, Day(..), day, dayOfWeek, month, year)
-import DatePicker exposing (defaultSettings)
+import ClockPicker exposing (Time)
 import Html exposing (Html, div, h1, text)
 
 
 type Msg
-    = ToDatePicker DatePicker.Msg
+    = ToClockPicker ClockPicker.Msg
 
 
 type alias Model =
-    { date : Maybe Date
-    , datePicker : DatePicker.DatePicker
+    { time : Maybe Time
+    , clockPicker : ClockPicker.ClockPicker
     }
 
 
 init : ( Model, Cmd Msg )
 init =
     let
-        isDisabled date =
-            dayOfWeek date
-                |> flip List.member [ Sat, Sun ]
-
-        ( datePicker, datePickerFx ) =
-            DatePicker.init { defaultSettings | isDisabled = isDisabled }
+        ( clockPicker, clockPickerCmd ) = ClockPicker.init
     in
-        { date = Nothing
-        , datePicker = datePicker
+        { time = Nothing
+        , clockPicker = clockPicker
         }
-            ! [ Cmd.map ToDatePicker datePickerFx ]
+            ! [ Cmd.map ToClockPicker clockPickerCmd ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ datePicker } as model) =
+update msg ({ clockPicker } as model) =
     case msg of
-        ToDatePicker msg ->
+        ToClockPicker msg ->
             let
-                ( newDatePicker, datePickerFx, mDate ) =
-                    DatePicker.update msg datePicker
+                ( newClockPicker, clockPickerCmd ) =
+                    ClockPicker.update msg clockPicker
 
-                date =
-                    case mDate of
-                        Nothing ->
-                            model.date
-
-                        date ->
-                            date
+                -- time =
+                --     case mTime of
+                --         Nothing ->
+                --             model.time
+                --
+                --         time ->
+                --             time
             in
                 { model
-                    | date = date
-                    , datePicker = newDatePicker
+                    | time = Nothing
+                    , clockPicker = newClockPicker
                 }
-                    ! [ Cmd.map ToDatePicker datePickerFx ]
+                    ! [ Cmd.map ToClockPicker clockPickerCmd ]
 
 
 view : Model -> Html Msg
-view ({ date, datePicker } as model) =
+view ({ time, clockPicker } as model) =
     div []
-        [ case date of
+        [ case time of
             Nothing ->
-                h1 [] [ text "Pick a date" ]
+                h1 [] [ text "Pick a time" ]
 
-            Just date ->
-                h1 [] [ text <| formatDate date ]
-        , DatePicker.view datePicker
-            |> Html.map ToDatePicker
+            Just time ->
+                h1 [] [ text <| toString time ]
+        , ClockPicker.view clockPicker
+            |> Html.map ToClockPicker
         ]
-
-
-formatDate : Date -> String
-formatDate d =
-    toString (month d) ++ " " ++ toString (day d) ++ ", " ++ toString (year d)
 
 
 main : Program Never Model Msg
