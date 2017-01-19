@@ -55,8 +55,8 @@ update msg model =
         z = sqrt <| x * x + y * y
         isInner = if z < ((outerRadius + innerRadius) / 2) then True else False
 
-        unit = 1 / 6 * pi
-        val = round <| radian / unit
+        unit = hourStep / 6 * pi
+        val = hourStep * (round <| radian / unit)
         hour = valToHour val isInner
       in
         { model | hour = hour, state = MinuteView } ! []
@@ -69,8 +69,8 @@ update msg model =
         radianTemp = atan2 x (negate y)
         radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
 
-        unit = 1 / 30 * pi
-        val = round <| radian / unit
+        unit = minuteStep / 30 * pi
+        val = minuteStep * (round <| radian / unit)
       in
         { model | minute = val, state = Closed } ! []
 
@@ -117,10 +117,10 @@ view model =
   div []
     [ p [] [ text "Clockpicker" ]
     , input
-      [ onClick OpenPicker
-      , value (formatTime model)
-      ]
-      []
+        [ onClick OpenPicker
+        , value (formatTime model)
+        ]
+        []
     , clockPickerWrapper model
     , div [ style [("margin-top", "250px")]] [ text (toString model) ]
     ]

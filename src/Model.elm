@@ -13,6 +13,9 @@ innerRadius = 54
 tickRadius = 13.0
 diameter = round <| dialRadius * 2
 
+hourStep = 1
+minuteStep = 5
+
 
 type alias Model =
   { state : State

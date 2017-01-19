@@ -25,13 +25,12 @@ viewPopoverContentHour model =
   div
     [ class "popover-content" ]
     [ div
-      [ class "clockpicker-plate"
-      , id "hand-target"
-      -- , on "mousemove" (Json.map MouseMove offsetPosition)
-      ]
-      [ drawHourTicks model
-      , drawHourCanvas model
-      ]
+        [ class "clockpicker-plate"
+        , id "hand-target"
+        ]
+        [ drawHourTicks model
+        , drawHourCanvas model
+        ]
     , span [ class "clockpicker-am-pm-clock" ] []
     ]
 
@@ -46,7 +45,7 @@ drawHourCanvas model =
     radianTemp = atan2 x (negate y)
     radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
 
-    unit = 1 / 6 * pi
+    unit = hourStep / 6 * pi
     val = round <| radian / unit
     radianRounded = (toFloat val) * unit
 
@@ -105,11 +104,10 @@ drawHourCanvas model =
           [ width diameter
           , height diameter
           , VirtualDom.on "mousemove" (Json.map MouseMove offsetPosition)
-          , Svg.Attributes.fillOpacity "0.0"
+          , Svg.Attributes.fillOpacity "0"
           ]
           []
         ]
-      , p [] [ text <| toString val ]
       ]
 
 

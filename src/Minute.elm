@@ -45,7 +45,7 @@ drawMinuteCanvas model =
     radianTemp = atan2 x (negate y)
     radian = if radianTemp < 0 then pi * 2 + radianTemp else radianTemp
 
-    unit = 1 / 30 * pi
+    unit = minuteStep / 30 * pi
     val = round <| radian / unit
     radianRounded = (toFloat val) * unit
 
@@ -103,11 +103,10 @@ drawMinuteCanvas model =
           [ width diameter
           , height diameter
           , VirtualDom.on "mousemove" (Json.map MouseMove offsetPosition)
-          , Svg.Attributes.fillOpacity "0.0"
+          , Svg.Attributes.fillOpacity "0"
           ]
           []
         ]
-      , p [] [ text <| toString val ]
       ]
 
 
