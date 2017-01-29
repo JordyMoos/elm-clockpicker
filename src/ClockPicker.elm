@@ -204,10 +204,10 @@ update msg (ClockPicker ({ state, pos, hour, minute, settings } as model)) =
                         False
 
                 unit =
-                    (toFloat model.settings.hourStep) / 6 * pi
+                    (toFloat settings.hourStep) / 6 * pi
 
                 val =
-                    model.settings.hourStep * (round <| radian / unit)
+                    settings.hourStep * (round <| radian / unit)
 
                 hour =
                     valToHour val isInner
@@ -232,10 +232,10 @@ update msg (ClockPicker ({ state, pos, hour, minute, settings } as model)) =
                         radianTemp
 
                 unit =
-                    (toFloat model.settings.minuteStep) / 30 * pi
+                    (toFloat settings.minuteStep) / 30 * pi
 
                 val =
-                    model.settings.minuteStep * (round <| radian / unit)
+                    settings.minuteStep * (round <| radian / unit)
             in
                 { model | minute = val, state = Closed } ! []
 
