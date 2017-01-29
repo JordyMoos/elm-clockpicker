@@ -1,6 +1,6 @@
 module Simple exposing (main)
 
-import ClockPicker exposing (Time)
+import ClockPicker exposing (Time, defaultSettings)
 import Html exposing (Html, div, h1, text)
 
 
@@ -17,7 +17,8 @@ type alias Model =
 init : ( Model, Cmd Msg )
 init =
     let
-        ( clockPicker, clockPickerCmd ) = ClockPicker.init
+        ( clockPicker, clockPickerCmd ) =
+            ClockPicker.init defaultSettings
     in
         { time = Nothing
         , clockPicker = clockPicker
