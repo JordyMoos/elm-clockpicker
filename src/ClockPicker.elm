@@ -69,8 +69,7 @@ diameter =
 
 type alias Model =
     { state : State
-    , hour : Int
-    , minute : Int
+    , time : Time
     , pos : Position
     , settings : Settings
     }
@@ -113,6 +112,11 @@ type alias Time =
     }
 
 
+defaultTime : Time
+defaultTime =
+    Time 0 0
+
+
 {-| The ClockPicker model.
 -}
 type ClockPicker
@@ -140,9 +144,9 @@ type Msg
     | ClickMinute
 
 
-(!) : Model -> List (Cmd Msg) -> ( ClockPicker, Cmd Msg )
-(!) m cs =
-    ( ClockPicker m, Cmd.batch cs )
+(!) : Model -> List (Cmd Msg) -> ( ClockPicker, Cmd Msg, Maybe Time )
+(!) model cmds =
+    ( ClockPicker model, Cmd.batch cmds, Nothing )
 
 
 {-| Initialize a ClockPicker given a Settings record.
@@ -158,15 +162,15 @@ You must execute the returned command for future purposes
 -}
 init : Settings -> ( ClockPicker, Cmd Msg )
 init settings =
-    ( ClockPicker <| Model Closed 0 0 emptyPosition settings
+    ( ClockPicker <| Model Closed defaultTime emptyPosition settings
     , Cmd.none
     )
 
 
 {-| update
 -}
-update : Msg -> ClockPicker -> ( ClockPicker, Cmd Msg )
-update msg (ClockPicker ({ state, pos, hour, minute, settings } as model)) =
+update : Msg -> ClockPicker -> ( ClockPicker, Cmd Msg, Maybe Time )
+update msg (ClockPicker ({ state, pos, time, settings } as model)) =
     case msg of
         NoOp ->
             model ! []
@@ -211,8 +215,14 @@ update msg (ClockPicker ({ state, pos, hour, minute, settings } as model)) =
 
                 hour =
                     valToHour val isInner
+
+                newTime =
+                    { time | hour = hour }
             in
-                { model | hour = hour, state = MinuteView } ! []
+                ( ClockPicker { model | time = newTime, state = MinuteView }
+                , Cmd.none
+                , Just newTime
+                )
 
         ClickMinute ->
             let
@@ -236,14 +246,34 @@ update msg (ClockPicker ({ state, pos, hour, minute, settings } as model)) =
 
                 val =
                     settings.minuteStep * (round <| radian / unit)
+
+                newTime =
+                    { time | minute = val }
             in
-                { model | minute = val, state = Closed } ! []
+                ( ClockPicker { model | time = newTime, state = Closed }
+                , Cmd.none
+                , Just newTime
+                )
 
         SetHour hour ->
-            { model | hour = hour, state = MinuteView } ! []
+            let
+                newTime =
+                    { time | hour = hour }
+            in
+                ( ClockPicker { model | time = newTime, state = MinuteView }
+                , Cmd.none
+                , Just newTime
+                )
 
         SetMinute minute ->
-            { model | minute = minute, state = Closed } ! []
+            let
+                newTime =
+                    { time | minute = minute }
+            in
+                ( ClockPicker { model | time = newTime, state = Closed }
+                , Cmd.none
+                , Just newTime
+                )
 
         DragAt position ->
             { model | pos = position } ! []
@@ -276,7 +306,7 @@ valToHour val isInner =
 {-| view
 -}
 view : ClockPicker -> Html Msg
-view (ClockPicker ({ state, pos, hour, minute } as model)) =
+view (ClockPicker ({ state, pos, time, settings } as model)) =
     div [ class "clockpicker-container" ]
         [ input
             [ onClick OpenPicker
@@ -294,7 +324,7 @@ offsetPosition =
 
 formatTime : Model -> String
 formatTime model =
-    (formatHourFull model.hour) ++ ":" ++ (formatMinuteFull model.minute)
+    (formatHourFull model.time.hour) ++ ":" ++ (formatMinuteFull model.time.minute)
 
 
 clockPickerWrapper : Model -> Html Msg
@@ -333,11 +363,11 @@ viewTitle model =
         [ class "popover-title" ]
         [ span
             [ class "clockpicker-span-hours text-primary" ]
-            [ text (formatHourFull model.hour) ]
+            [ text (formatHourFull model.time.hour) ]
         , text ":"
         , span
             [ class "clockpicker-span-minutes" ]
-            [ text (formatMinuteFull model.minute) ]
+            [ text (formatMinuteFull model.time.minute) ]
         ]
 
 
