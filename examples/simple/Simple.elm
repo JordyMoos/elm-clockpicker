@@ -31,19 +31,19 @@ update msg ({ clockPicker } as model) =
     case msg of
         ToClockPicker msg ->
             let
-                ( newClockPicker, clockPickerCmd ) =
+                ( newClockPicker, clockPickerCmd, newTime ) =
                     ClockPicker.update msg clockPicker
 
-                -- time =
-                --     case mTime of
-                --         Nothing ->
-                --             model.time
-                --
-                --         time ->
-                --             time
+                time =
+                    case newTime of
+                        Nothing ->
+                            model.time
+
+                        time ->
+                            time
             in
                 { model
-                    | time = Nothing
+                    | time = time
                     , clockPicker = newClockPicker
                 }
                     ! [ Cmd.map ToClockPicker clockPickerCmd ]
@@ -57,7 +57,13 @@ view ({ time, clockPicker } as model) =
                 h1 [] [ text "Pick a time" ]
 
             Just time ->
-                h1 [] [ text <| toString time ]
+                h1 []
+                    [ text <|
+                        "Selected hour: "
+                            ++ toString time.hour
+                            ++ " and minute: "
+                            ++ toString time.minute
+                    ]
         , ClockPicker.view clockPicker
             |> Html.map ToClockPicker
         ]
