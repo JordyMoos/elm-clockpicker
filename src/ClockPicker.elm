@@ -1,10 +1,23 @@
-module ClockPicker exposing (Msg, ClockPicker, Time, init, view, update)
+module ClockPicker
+    exposing
+        ( Msg
+        , Settings
+        , ClockPicker
+        , Time
+        , defaultSettings
+        , init
+        , update
+        , view
+        )
 
 {-| A customizable clock picker component.
 
-# Clock
+# ClockPicker
 @docs Msg, ClockPicker, Time
 @docs init, update, view
+
+# Settings
+@docs Settings, defaultSettings
 
 -}
 
@@ -29,16 +42,6 @@ outerRadius =
     80.0
 
 
-dialRadiusString : String
-dialRadiusString =
-    toString dialRadius
-
-
-tickRadiusString : String
-tickRadiusString =
-    toString tickRadius
-
-
 innerRadius : Float
 innerRadius =
     54
@@ -49,19 +52,19 @@ tickRadius =
     13.0
 
 
+dialRadiusString : String
+dialRadiusString =
+    toString dialRadius
+
+
+tickRadiusString : String
+tickRadiusString =
+    toString tickRadius
+
+
 diameter : Int
 diameter =
     round <| dialRadius * 2
-
-
-hourStep : Int
-hourStep =
-    1
-
-
-minuteStep : Int
-minuteStep =
-    5
 
 
 type alias Model =
@@ -69,7 +72,37 @@ type alias Model =
     , hour : Int
     , minute : Int
     , pos : Position
+    , settings : Settings
     }
+
+
+{-| The type of clock picker settings.
+-}
+type alias Settings =
+    { hourStep : Int
+    , minuteStep : Int
+    }
+
+
+{-| A record of default settings for the clock picker.
+Extend this if you want to customize your clock pciker.
+
+
+    import ClockPicker exposing (defaultSettings)
+
+    ClockPicker.init { defaultSettings | minuteStep = 5 }
+
+-}
+defaultSettings : Settings
+defaultSettings =
+    { hourStep = 1
+    , minuteStep = 1
+    }
+
+
+emptyPosition : Position
+emptyPosition =
+    Position 0 0
 
 
 {-| The time response record
@@ -112,17 +145,28 @@ type Msg
     ( ClockPicker m, Cmd.batch cs )
 
 
-{-| init
+{-| Initialize a ClockPicker given a Settings record.
+You must execute the returned command for future purposes
+
+
+    init
+        let
+            (clockPicker, clockPickerCmd) = ClockPicker.init defaultSettings
+        in
+            { picker = clockPicker } ! [ Cmd.map ToClockPicker clockPickerCmd ]
+
 -}
-init : ( ClockPicker, Cmd Msg )
-init =
-    ( ClockPicker <| Model Closed 0 0 <| Position 0 0, Cmd.none )
+init : Settings -> ( ClockPicker, Cmd Msg )
+init settings =
+    ( ClockPicker <| Model Closed 0 0 emptyPosition settings
+    , Cmd.none
+    )
 
 
 {-| update
 -}
 update : Msg -> ClockPicker -> ( ClockPicker, Cmd Msg )
-update msg (ClockPicker ({ state, pos, hour, minute } as model)) =
+update msg (ClockPicker ({ state, pos, hour, minute, settings } as model)) =
     case msg of
         NoOp ->
             model ! []
@@ -160,10 +204,10 @@ update msg (ClockPicker ({ state, pos, hour, minute } as model)) =
                         False
 
                 unit =
-                    (toFloat hourStep) / 6 * pi
+                    (toFloat model.settings.hourStep) / 6 * pi
 
                 val =
-                    hourStep * (round <| radian / unit)
+                    model.settings.hourStep * (round <| radian / unit)
 
                 hour =
                     valToHour val isInner
@@ -188,10 +232,10 @@ update msg (ClockPicker ({ state, pos, hour, minute } as model)) =
                         radianTemp
 
                 unit =
-                    (toFloat minuteStep) / 30 * pi
+                    (toFloat model.settings.minuteStep) / 30 * pi
 
                 val =
-                    minuteStep * (round <| radian / unit)
+                    model.settings.minuteStep * (round <| radian / unit)
             in
                 { model | minute = val, state = Closed } ! []
 
@@ -346,7 +390,7 @@ drawMinuteCanvas model =
                 radianTemp
 
         unit =
-            (toFloat minuteStep) / 30 * pi
+            (toFloat model.settings.minuteStep) / 30 * pi
 
         val =
             round <| radian / unit
@@ -514,7 +558,7 @@ drawHourCanvas model =
                 radianTemp
 
         unit =
-            (toFloat hourStep) / 6 * pi
+            (toFloat model.settings.hourStep) / 6 * pi
 
         val =
             round <| radian / unit
