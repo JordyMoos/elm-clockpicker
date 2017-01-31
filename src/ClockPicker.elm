@@ -84,7 +84,7 @@ type alias Settings =
 
 
 type alias FromPositionResult =
-    { val : Int
+    { value : Int
     , isInner : Bool
     , cxString : String
     , cyString : String
@@ -193,11 +193,11 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
 
         ClickHour ->
             let
-                { val, isInner } =
+                { value, isInner } =
                     calculateUnitByPosition 12 settings.hourStep pos
 
                 hour =
-                    valToHour val isInner
+                    valToHour value isInner
 
                 newTime =
                     { time | hour = hour }
@@ -209,11 +209,11 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
 
         ClickMinute ->
             let
-                { val } =
+                { value } =
                     calculateUnitByPosition 60 settings.minuteStep pos
 
                 newTime =
-                    { time | minute = val }
+                    { time | minute = value }
             in
                 ( ClockPicker { model | time = newTime, state = Closed }
                 , Cmd.none
@@ -256,6 +256,20 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
             { model | state = MinuteView } ! []
 
 
+{-| view
+-}
+view : ClockPicker -> Html Msg
+view (ClockPicker ({ state, pos, time, settings } as model)) =
+    div [ class "clockpicker-container" ]
+        [ input
+            [ onClick OpenPicker
+            , value (formatTime model)
+            ]
+            []
+        , clockPickerWrapper model
+        ]
+
+
 calculateUnitByPosition : Int -> Int -> Position -> FromPositionResult
 calculateUnitByPosition units steps pos =
     let
@@ -286,7 +300,7 @@ calculateUnitByPosition units steps pos =
         unit =
             (toFloat steps) / (toFloat units) * pi * 2
 
-        val =
+        value =
             steps * (round <| radian / unit)
 
         radius =
@@ -296,7 +310,7 @@ calculateUnitByPosition units steps pos =
                 outerRadius
 
         radianRounded =
-            (toFloat val) * unit
+            (toFloat value) * unit
 
         cx =
             (sin radianRounded) * radius
@@ -310,17 +324,17 @@ calculateUnitByPosition units steps pos =
         cyString =
             toString cy
     in
-        FromPositionResult val isInner cxString cyString
+        FromPositionResult value isInner cxString cyString
 
 
 valToHour : Int -> Bool -> Int
-valToHour val isInner =
+valToHour value isInner =
     let
         zeroCompensated =
-            if val == 0 then
+            if value == 0 then
                 12
             else
-                val
+                value
 
         innerCompensated =
             if isInner then
@@ -329,20 +343,6 @@ valToHour val isInner =
                 zeroCompensated
     in
         innerCompensated
-
-
-{-| view
--}
-view : ClockPicker -> Html Msg
-view (ClockPicker ({ state, pos, time, settings } as model)) =
-    div [ class "clockpicker-container" ]
-        [ input
-            [ onClick OpenPicker
-            , value (formatTime model)
-            ]
-            []
-        , clockPickerWrapper model
-        ]
 
 
 offsetPosition : Json.Decoder Position
@@ -387,20 +387,27 @@ drawHourView model =
 
 viewTitle : Model -> Html Msg
 viewTitle model =
-    div
-        [ class "popover-title" ]
-        [ span
-            [ class "clockpicker-span-hours text-primary"
-            , onClick ShowHour
+    let
+        isActive state =
+            if state == model.state then
+                " text-primary"
+            else
+                ""
+    in
+        div
+            [ class "popover-title" ]
+            [ span
+                [ class <| "clockpicker-span-hours" ++ (isActive HourView)
+                , onClick ShowHour
+                ]
+                [ text (formatHourFull model.time.hour) ]
+            , text ":"
+            , span
+                [ class <| "clockpicker-span-minutes" ++ (isActive MinuteView)
+                , onClick ShowMinute
+                ]
+                [ text (formatMinuteFull model.time.minute) ]
             ]
-            [ text (formatHourFull model.time.hour) ]
-        , text ":"
-        , span
-            [ class "clockpicker-span-minutes"
-            , onClick ShowMinute
-            ]
-            [ text (formatMinuteFull model.time.minute) ]
-        ]
 
 
 drawMinuteView : Model -> Html Msg
@@ -436,7 +443,7 @@ viewPopoverContentMinute model =
 drawMinuteCanvas : Model -> Html Msg
 drawMinuteCanvas model =
     let
-        { val, isInner, cxString, cyString } =
+        { value, isInner, cxString, cyString } =
             calculateUnitByPosition 60 model.settings.minuteStep model.pos
     in
         div
@@ -565,7 +572,7 @@ viewPopoverContentHour model =
 drawHourCanvas : Model -> Html Msg
 drawHourCanvas model =
     let
-        { val, isInner, cxString, cyString } =
+        { value, isInner, cxString, cyString } =
             calculateUnitByPosition 12 model.settings.minuteStep model.pos
     in
         div
