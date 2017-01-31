@@ -142,6 +142,8 @@ type Msg
     | MouseMove Position
     | ClickHour
     | ClickMinute
+    | ShowHour
+    | ShowMinute
 
 
 (!) : Model -> List (Cmd Msg) -> ( ClockPicker, Cmd Msg, Maybe Time )
@@ -284,6 +286,12 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
         MouseMove position ->
             { model | pos = position } ! []
 
+        ShowHour ->
+            { model | state = HourView } ! []
+
+        ShowMinute ->
+            { model | state = MinuteView } ! []
+
 
 valToHour : Int -> Bool -> Int
 valToHour val isInner =
@@ -362,11 +370,15 @@ viewTitle model =
     div
         [ class "popover-title" ]
         [ span
-            [ class "clockpicker-span-hours text-primary" ]
+            [ class "clockpicker-span-hours text-primary"
+            , onClick ShowHour
+            ]
             [ text (formatHourFull model.time.hour) ]
         , text ":"
         , span
-            [ class "clockpicker-span-minutes" ]
+            [ class "clockpicker-span-minutes"
+            , onClick ShowMinute
+            ]
             [ text (formatMinuteFull model.time.minute) ]
         ]
 
