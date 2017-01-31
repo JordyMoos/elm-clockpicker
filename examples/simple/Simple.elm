@@ -1,6 +1,6 @@
 module Simple exposing (main)
 
-import ClockPicker exposing (Time, defaultSettings)
+import ClockPicker exposing (Time, StartTime(..), defaultSettings)
 import Html exposing (Html, div, h1, text)
 
 
@@ -18,7 +18,7 @@ init : ( Model, Cmd Msg )
 init =
     let
         ( clockPicker, clockPickerCmd ) =
-            ClockPicker.init defaultSettings
+            ClockPicker.init { defaultSettings | startTime = NowStartTime }
     in
         { time = Nothing
         , clockPicker = clockPicker
