@@ -528,11 +528,7 @@ viewPopoverContentMinute model =
 
 drawMinuteCanvas : Model -> Html Msg
 drawMinuteCanvas model =
-    let
-        result =
-            calculateUnitByPosition 60 model.settings.minuteStep False model.pos
-    in
-        drawCanvas ClickMinute result
+    drawCanvas ClickMinute <| calculateUnitByPosition 60 model.settings.minuteStep False model.pos
 
 
 drawMinuteTicks : Model -> Html Msg
@@ -579,11 +575,7 @@ viewPopoverContentHour model =
 
 drawHourCanvas : Model -> Html Msg
 drawHourCanvas model =
-    let
-        result =
-            calculateUnitByPosition 12 model.settings.minuteStep True model.pos
-    in
-        drawCanvas ClickHour result
+    drawCanvas ClickHour <| calculateUnitByPosition 12 model.settings.minuteStep True model.pos
 
 
 drawHourTicks : Model -> Html Msg
