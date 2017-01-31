@@ -18,7 +18,7 @@ init : ( Model, Cmd Msg )
 init =
     let
         ( clockPicker, clockPickerCmd ) =
-            ClockPicker.init defaultSettings
+            ClockPicker.init { defaultSettings | twelveHour=True }
     in
         { time = Nothing
         , clockPicker = clockPicker
