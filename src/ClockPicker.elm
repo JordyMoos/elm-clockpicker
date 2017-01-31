@@ -368,6 +368,38 @@ clockPickerWrapper model =
             drawMinuteView model
 
 
+drawTick : (Int -> Msg) -> (Int -> String) -> Int -> Int -> Int -> Html Msg
+drawTick onClickMsg formatter outerRadiusMax visualStepSize tick =
+    let
+        radius =
+            if tick > outerRadiusMax then
+                innerRadius
+            else
+                outerRadius
+
+        radian =
+            (toFloat tick) / 12 * pi * 2
+
+        left =
+            dialRadius + (sin radian) * radius - tickRadius
+
+        top =
+            dialRadius - (cos radian) * radius - tickRadius
+
+        actualValue =
+            tick * visualStepSize
+    in
+        div
+            [ class "clockpicker-tick"
+            , style
+                [ ( "left", (toString left) ++ "px" )
+                , ( "top", (toString top) ++ "px" )
+                ]
+            , onClick (onClickMsg actualValue)
+            ]
+            [ text (formatter actualValue) ]
+
+
 drawHourView : Model -> Html Msg
 drawHourView model =
     div
@@ -495,36 +527,7 @@ drawMinuteTicks : Model -> Html Msg
 drawMinuteTicks model =
     div
         [ class "clockpicker-dial clockpicker-minutes" ]
-        (List.map drawMinuteTick (List.range 1 (60 // 5)))
-
-
-drawMinuteTick : Int -> Html Msg
-drawMinuteTick tick =
-    let
-        minute =
-            tick * 5
-
-        radius =
-            outerRadius
-
-        radian =
-            (toFloat tick) / 6 * pi
-
-        left =
-            dialRadius + (sin radian) * radius - tickRadius
-
-        top =
-            dialRadius - (cos radian) * radius - tickRadius
-    in
-        div
-            [ class "clockpicker-tick"
-            , style
-                [ ( "left", (toString left) ++ "px" )
-                , ( "top", (toString top) ++ "px" )
-                ]
-            , onClick (SetMinute minute)
-            ]
-            [ text (formatMinute minute) ]
+        (List.map (drawTick (SetMinute) (formatMinute) 60 5) (List.range 1 (60 // 5)))
 
 
 formatMinute : Int -> String
@@ -624,36 +627,7 @@ drawHourTicks : Model -> Html Msg
 drawHourTicks model =
     div
         [ class "clockpicker-dial clockpicker-hours" ]
-        (List.map drawHourTick (List.range 1 24))
-
-
-drawHourTick : Int -> Html Msg
-drawHourTick tick =
-    let
-        radius =
-            if tick > 12 then
-                innerRadius
-            else
-                outerRadius
-
-        radian =
-            (toFloat tick) / 6 * pi
-
-        left =
-            dialRadius + (sin radian) * radius - tickRadius
-
-        top =
-            dialRadius - (cos radian) * radius - tickRadius
-    in
-        div
-            [ class "clockpicker-tick"
-            , style
-                [ ( "left", (toString left) ++ "px" )
-                , ( "top", (toString top) ++ "px" )
-                ]
-            , onClick (SetHour tick)
-            ]
-            [ text (formatHour tick) ]
+        (List.map (drawTick (SetHour) (formatHour) 12 1) (List.range 1 24))
 
 
 formatHour : Int -> String
