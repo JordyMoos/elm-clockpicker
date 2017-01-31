@@ -400,6 +400,60 @@ drawTick onClickMsg formatter outerRadiusMax visualStepSize tick =
             [ text (formatter actualValue) ]
 
 
+drawCanvas : Msg -> FromPositionResult -> Html Msg
+drawCanvas onClickMsg result =
+    div
+        [ class "clockpicker-canvas"
+        , onClick onClickMsg
+        ]
+        [ Svg.svg
+            [ width diameter
+            , height diameter
+            ]
+            [ Svg.g
+                [ Svg.Attributes.transform <| "translate(" ++ dialRadiusString ++ "," ++ dialRadiusString ++ ")"
+                ]
+                [ Svg.line
+                    [ Svg.Attributes.x1 "0"
+                    , Svg.Attributes.y1 "0"
+                    , Svg.Attributes.x2 result.cxString
+                    , Svg.Attributes.y2 result.cyString
+                    ]
+                    []
+                , Svg.circle
+                    [ Svg.Attributes.class "clockpicker-canvas-fg"
+                    , Svg.Attributes.r "3.5"
+                    , Svg.Attributes.cx result.cxString
+                    , Svg.Attributes.cy result.cyString
+                    ]
+                    []
+                , Svg.circle
+                    [ Svg.Attributes.class "clockpicker-canvas-bg"
+                    , Svg.Attributes.r tickRadiusString
+                    , Svg.Attributes.cx result.cxString
+                    , Svg.Attributes.cy result.cyString
+                    , Svg.Attributes.fillOpacity "0.5"
+                    ]
+                    []
+                , Svg.circle
+                    [ Svg.Attributes.class "clockpicker-canvas-bearing"
+                    , Svg.Attributes.r "2"
+                    , Svg.Attributes.cx "0"
+                    , Svg.Attributes.cy "0"
+                    ]
+                    []
+                ]
+            , Svg.rect
+                [ width diameter
+                , height diameter
+                , VirtualDom.on "mousemove" (Json.map MouseMove offsetPosition)
+                , Svg.Attributes.fillOpacity "0"
+                ]
+                []
+            ]
+        ]
+
+
 drawHourView : Model -> Html Msg
 drawHourView model =
     div
@@ -475,59 +529,10 @@ viewPopoverContentMinute model =
 drawMinuteCanvas : Model -> Html Msg
 drawMinuteCanvas model =
     let
-        { value, isInner, cxString, cyString } =
+        result =
             calculateUnitByPosition 60 model.settings.minuteStep False model.pos
     in
-        div
-            [ class "clockpicker-canvas"
-            , onClick ClickMinute
-            ]
-            [ Svg.svg
-                [ width diameter
-                , height diameter
-                ]
-                [ Svg.g
-                    [ Svg.Attributes.transform <| "translate(" ++ dialRadiusString ++ "," ++ dialRadiusString ++ ")"
-                    ]
-                    [ Svg.line
-                        [ Svg.Attributes.x1 "0"
-                        , Svg.Attributes.y1 "0"
-                        , Svg.Attributes.x2 cxString
-                        , Svg.Attributes.y2 cyString
-                        ]
-                        []
-                    , Svg.circle
-                        [ Svg.Attributes.class "clockpicker-canvas-fg"
-                        , Svg.Attributes.r "3.5"
-                        , Svg.Attributes.cx cxString
-                        , Svg.Attributes.cy cyString
-                        ]
-                        []
-                    , Svg.circle
-                        [ Svg.Attributes.class "clockpicker-canvas-bg"
-                        , Svg.Attributes.r tickRadiusString
-                        , Svg.Attributes.cx cxString
-                        , Svg.Attributes.cy cyString
-                        , Svg.Attributes.fillOpacity "0.5"
-                        ]
-                        []
-                    , Svg.circle
-                        [ Svg.Attributes.class "clockpicker-canvas-bearing"
-                        , Svg.Attributes.r "2"
-                        , Svg.Attributes.cx "0"
-                        , Svg.Attributes.cy "0"
-                        ]
-                        []
-                    ]
-                , Svg.rect
-                    [ width diameter
-                    , height diameter
-                    , VirtualDom.on "mousemove" (Json.map MouseMove offsetPosition)
-                    , Svg.Attributes.fillOpacity "0"
-                    ]
-                    []
-                ]
-            ]
+        drawCanvas ClickMinute result
 
 
 drawMinuteTicks : Model -> Html Msg
@@ -575,59 +580,10 @@ viewPopoverContentHour model =
 drawHourCanvas : Model -> Html Msg
 drawHourCanvas model =
     let
-        { value, isInner, cxString, cyString } =
+        result =
             calculateUnitByPosition 12 model.settings.minuteStep True model.pos
     in
-        div
-            [ class "clockpicker-canvas"
-            , onClick ClickHour
-            ]
-            [ Svg.svg
-                [ width diameter
-                , height diameter
-                ]
-                [ Svg.g
-                    [ Svg.Attributes.transform <| "translate(" ++ dialRadiusString ++ "," ++ dialRadiusString ++ ")"
-                    ]
-                    [ Svg.line
-                        [ Svg.Attributes.x1 "0"
-                        , Svg.Attributes.y1 "0"
-                        , Svg.Attributes.x2 cxString
-                        , Svg.Attributes.y2 cyString
-                        ]
-                        []
-                    , Svg.circle
-                        [ Svg.Attributes.class "clockpicker-canvas-fg"
-                        , Svg.Attributes.r "3.5"
-                        , Svg.Attributes.cx cxString
-                        , Svg.Attributes.cy cyString
-                        ]
-                        []
-                    , Svg.circle
-                        [ Svg.Attributes.class "clockpicker-canvas-bg"
-                        , Svg.Attributes.r tickRadiusString
-                        , Svg.Attributes.cx cxString
-                        , Svg.Attributes.cy cyString
-                        , Svg.Attributes.fillOpacity "0.5"
-                        ]
-                        []
-                    , Svg.circle
-                        [ Svg.Attributes.class "clockpicker-canvas-bearing"
-                        , Svg.Attributes.r "2"
-                        , Svg.Attributes.cx "0"
-                        , Svg.Attributes.cy "0"
-                        ]
-                        []
-                    ]
-                , Svg.rect
-                    [ width diameter
-                    , height diameter
-                    , VirtualDom.on "mousemove" (Json.map MouseMove offsetPosition)
-                    , Svg.Attributes.fillOpacity "0"
-                    ]
-                    []
-                ]
-            ]
+        drawCanvas ClickHour result
 
 
 drawHourTicks : Model -> Html Msg
