@@ -80,6 +80,7 @@ type alias Model =
 type alias Settings =
     { hourStep : Int
     , minuteStep : Int
+    , autoClose : Bool
     }
 
 
@@ -104,6 +105,7 @@ defaultSettings : Settings
 defaultSettings =
     { hourStep = 1
     , minuteStep = 1
+    , autoClose = False
     }
 
 
@@ -214,8 +216,14 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
 
                 newTime =
                     { time | minute = value }
+
+                newState =
+                    if settings.autoClose then
+                        Closed
+                    else
+                        MinuteView
             in
-                ( ClockPicker { model | time = newTime, state = Closed }
+                ( ClockPicker { model | time = newTime, state = newState }
                 , Cmd.none
                 , Just newTime
                 )
