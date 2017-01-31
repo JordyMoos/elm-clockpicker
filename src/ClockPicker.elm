@@ -83,6 +83,14 @@ type alias Settings =
     }
 
 
+type alias FromPositionResult =
+    { val : Int
+    , isInner : Bool
+    , cxString : String
+    , cyString : String
+    }
+
+
 {-| A record of default settings for the clock picker.
 Extend this if you want to customize your clock pciker.
 
@@ -185,35 +193,8 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
 
         ClickHour ->
             let
-                x =
-                    (toFloat pos.x) - dialRadius
-
-                y =
-                    (toFloat pos.y) - dialRadius
-
-                radianTemp =
-                    atan2 x (negate y)
-
-                radian =
-                    if radianTemp < 0 then
-                        pi * 2 + radianTemp
-                    else
-                        radianTemp
-
-                z =
-                    sqrt <| x * x + y * y
-
-                isInner =
-                    if z < ((outerRadius + innerRadius) / 2) then
-                        True
-                    else
-                        False
-
-                unit =
-                    (toFloat settings.hourStep) / 6 * pi
-
-                val =
-                    settings.hourStep * (round <| radian / unit)
+                { val, isInner } =
+                    calculateUnitByPosition 12 settings.hourStep pos
 
                 hour =
                     valToHour val isInner
@@ -228,26 +209,8 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
 
         ClickMinute ->
             let
-                x =
-                    (toFloat pos.x) - dialRadius
-
-                y =
-                    (toFloat pos.y) - dialRadius
-
-                radianTemp =
-                    atan2 x (negate y)
-
-                radian =
-                    if radianTemp < 0 then
-                        pi * 2 + radianTemp
-                    else
-                        radianTemp
-
-                unit =
-                    (toFloat settings.minuteStep) / 30 * pi
-
-                val =
-                    settings.minuteStep * (round <| radian / unit)
+                { val } =
+                    calculateUnitByPosition 60 settings.minuteStep pos
 
                 newTime =
                     { time | minute = val }
@@ -291,6 +254,63 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
 
         ShowMinute ->
             { model | state = MinuteView } ! []
+
+
+calculateUnitByPosition : Int -> Int -> Position -> FromPositionResult
+calculateUnitByPosition units steps pos =
+    let
+        x =
+            (toFloat pos.x) - dialRadius
+
+        y =
+            (toFloat pos.y) - dialRadius
+
+        radianTemp =
+            atan2 x (negate y)
+
+        radian =
+            if radianTemp < 0 then
+                pi * 2 + radianTemp
+            else
+                radianTemp
+
+        z =
+            sqrt <| x * x + y * y
+
+        isInner =
+            if z < ((outerRadius + innerRadius) / 2) then
+                True
+            else
+                False
+
+        unit =
+            (toFloat steps) / (toFloat units) * pi * 2
+
+        val =
+            steps * (round <| radian / unit)
+
+        radius =
+            if isInner then
+                innerRadius
+            else
+                outerRadius
+
+        radianRounded =
+            (toFloat val) * unit
+
+        cx =
+            (sin radianRounded) * radius
+
+        cy =
+            negate <| (cos radianRounded) * radius
+
+        cxString =
+            toString cx
+
+        cyString =
+            toString cy
+    in
+        FromPositionResult val isInner cxString cyString
 
 
 valToHour : Int -> Bool -> Int
@@ -416,47 +436,8 @@ viewPopoverContentMinute model =
 drawMinuteCanvas : Model -> Html Msg
 drawMinuteCanvas model =
     let
-        x =
-            (toFloat model.pos.x) - dialRadius
-
-        y =
-            (toFloat model.pos.y) - dialRadius
-
-        radianTemp =
-            atan2 x (negate y)
-
-        radian =
-            if radianTemp < 0 then
-                pi * 2 + radianTemp
-            else
-                radianTemp
-
-        unit =
-            (toFloat model.settings.minuteStep) / 30 * pi
-
-        val =
-            round <| radian / unit
-
-        radianRounded =
-            (toFloat val) * unit
-
-        z =
-            sqrt <| x * x + y * y
-
-        radius =
-            outerRadius
-
-        cx =
-            (sin radianRounded) * radius
-
-        cy =
-            negate <| (cos radianRounded) * radius
-
-        cxString =
-            toString cx
-
-        cyString =
-            toString cy
+        { val, isInner, cxString, cyString } =
+            calculateUnitByPosition 60 model.settings.minuteStep model.pos
     in
         div
             [ class "clockpicker-canvas"
@@ -584,56 +565,8 @@ viewPopoverContentHour model =
 drawHourCanvas : Model -> Html Msg
 drawHourCanvas model =
     let
-        x =
-            (toFloat model.pos.x) - dialRadius
-
-        y =
-            (toFloat model.pos.y) - dialRadius
-
-        radianTemp =
-            atan2 x (negate y)
-
-        radian =
-            if radianTemp < 0 then
-                pi * 2 + radianTemp
-            else
-                radianTemp
-
-        unit =
-            (toFloat model.settings.hourStep) / 6 * pi
-
-        val =
-            round <| radian / unit
-
-        radianRounded =
-            (toFloat val) * unit
-
-        z =
-            sqrt <| x * x + y * y
-
-        isInner =
-            if z < ((outerRadius + innerRadius) / 2) then
-                True
-            else
-                False
-
-        radius =
-            if isInner then
-                innerRadius
-            else
-                outerRadius
-
-        cx =
-            (sin radianRounded) * radius
-
-        cy =
-            negate <| (cos radianRounded) * radius
-
-        cxString =
-            toString cx
-
-        cyString =
-            toString cy
+        { val, isInner, cxString, cyString } =
+            calculateUnitByPosition 12 model.settings.minuteStep model.pos
     in
         div
             [ class "clockpicker-canvas"
