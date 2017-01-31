@@ -194,7 +194,7 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
         ClickHour ->
             let
                 { value, isInner } =
-                    calculateUnitByPosition 12 settings.hourStep pos
+                    calculateUnitByPosition 12 settings.hourStep True pos
 
                 hour =
                     valToHour value isInner
@@ -210,7 +210,7 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
         ClickMinute ->
             let
                 { value } =
-                    calculateUnitByPosition 60 settings.minuteStep pos
+                    calculateUnitByPosition 60 settings.minuteStep False pos
 
                 newTime =
                     { time | minute = value }
@@ -270,8 +270,8 @@ view (ClockPicker ({ state, pos, time, settings } as model)) =
         ]
 
 
-calculateUnitByPosition : Int -> Int -> Position -> FromPositionResult
-calculateUnitByPosition units steps pos =
+calculateUnitByPosition : Int -> Int -> Bool -> Position -> FromPositionResult
+calculateUnitByPosition units steps allowInner pos =
     let
         x =
             (toFloat pos.x) - dialRadius
@@ -292,7 +292,7 @@ calculateUnitByPosition units steps pos =
             sqrt <| x * x + y * y
 
         isInner =
-            if z < ((outerRadius + innerRadius) / 2) then
+            if allowInner && z < ((outerRadius + innerRadius) / 2) then
                 True
             else
                 False
@@ -366,6 +366,38 @@ clockPickerWrapper model =
 
         MinuteView ->
             drawMinuteView model
+
+
+drawTick : (Int -> Msg) -> (Int -> String) -> Int -> Int -> Int -> Html Msg
+drawTick onClickMsg formatter outerRadiusMax visualStepSize tick =
+    let
+        radius =
+            if tick > outerRadiusMax then
+                innerRadius
+            else
+                outerRadius
+
+        radian =
+            (toFloat tick) / 12 * pi * 2
+
+        left =
+            dialRadius + (sin radian) * radius - tickRadius
+
+        top =
+            dialRadius - (cos radian) * radius - tickRadius
+
+        actualValue =
+            tick * visualStepSize
+    in
+        div
+            [ class "clockpicker-tick"
+            , style
+                [ ( "left", (toString left) ++ "px" )
+                , ( "top", (toString top) ++ "px" )
+                ]
+            , onClick (onClickMsg actualValue)
+            ]
+            [ text (formatter actualValue) ]
 
 
 drawHourView : Model -> Html Msg
@@ -444,7 +476,7 @@ drawMinuteCanvas : Model -> Html Msg
 drawMinuteCanvas model =
     let
         { value, isInner, cxString, cyString } =
-            calculateUnitByPosition 60 model.settings.minuteStep model.pos
+            calculateUnitByPosition 60 model.settings.minuteStep False model.pos
     in
         div
             [ class "clockpicker-canvas"
@@ -502,36 +534,7 @@ drawMinuteTicks : Model -> Html Msg
 drawMinuteTicks model =
     div
         [ class "clockpicker-dial clockpicker-minutes" ]
-        (List.map drawMinuteTick (List.range 1 (60 // 5)))
-
-
-drawMinuteTick : Int -> Html Msg
-drawMinuteTick tick =
-    let
-        minute =
-            tick * 5
-
-        radius =
-            outerRadius
-
-        radian =
-            (toFloat tick) / 6 * pi
-
-        left =
-            dialRadius + (sin radian) * radius - tickRadius
-
-        top =
-            dialRadius - (cos radian) * radius - tickRadius
-    in
-        div
-            [ class "clockpicker-tick"
-            , style
-                [ ( "left", (toString left) ++ "px" )
-                , ( "top", (toString top) ++ "px" )
-                ]
-            , onClick (SetMinute minute)
-            ]
-            [ text (formatMinute minute) ]
+        (List.map (drawTick (SetMinute) (formatMinute) 60 5) (List.range 1 (60 // 5)))
 
 
 formatMinute : Int -> String
@@ -573,7 +576,7 @@ drawHourCanvas : Model -> Html Msg
 drawHourCanvas model =
     let
         { value, isInner, cxString, cyString } =
-            calculateUnitByPosition 12 model.settings.minuteStep model.pos
+            calculateUnitByPosition 12 model.settings.minuteStep True model.pos
     in
         div
             [ class "clockpicker-canvas"
@@ -631,36 +634,7 @@ drawHourTicks : Model -> Html Msg
 drawHourTicks model =
     div
         [ class "clockpicker-dial clockpicker-hours" ]
-        (List.map drawHourTick (List.range 1 24))
-
-
-drawHourTick : Int -> Html Msg
-drawHourTick tick =
-    let
-        radius =
-            if tick > 12 then
-                innerRadius
-            else
-                outerRadius
-
-        radian =
-            (toFloat tick) / 6 * pi
-
-        left =
-            dialRadius + (sin radian) * radius - tickRadius
-
-        top =
-            dialRadius - (cos radian) * radius - tickRadius
-    in
-        div
-            [ class "clockpicker-tick"
-            , style
-                [ ( "left", (toString left) ++ "px" )
-                , ( "top", (toString top) ++ "px" )
-                ]
-            , onClick (SetHour tick)
-            ]
-            [ text (formatHour tick) ]
+        (List.map (drawTick (SetHour) (formatHour) 12 1) (List.range 1 24))
 
 
 formatHour : Int -> String
