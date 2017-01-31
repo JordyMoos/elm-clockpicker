@@ -194,7 +194,7 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
         ClickHour ->
             let
                 { val, isInner } =
-                    calculateUnitByPosition 12 settings.hourStep pos
+                    calculateUnitByPosition 12 settings.hourStep True pos
 
                 hour =
                     valToHour val isInner
@@ -210,7 +210,7 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
         ClickMinute ->
             let
                 { val } =
-                    calculateUnitByPosition 60 settings.minuteStep pos
+                    calculateUnitByPosition 60 settings.minuteStep False pos
 
                 newTime =
                     { time | minute = val }
@@ -256,8 +256,8 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
             { model | state = MinuteView } ! []
 
 
-calculateUnitByPosition : Int -> Int -> Position -> FromPositionResult
-calculateUnitByPosition units steps pos =
+calculateUnitByPosition : Int -> Int -> Bool -> Position -> FromPositionResult
+calculateUnitByPosition units steps allowInner pos =
     let
         x =
             (toFloat pos.x) - dialRadius
@@ -278,7 +278,7 @@ calculateUnitByPosition units steps pos =
             sqrt <| x * x + y * y
 
         isInner =
-            if z < ((outerRadius + innerRadius) / 2) then
+            if allowInner && z < ((outerRadius + innerRadius) / 2) then
                 True
             else
                 False
@@ -469,7 +469,7 @@ drawMinuteCanvas : Model -> Html Msg
 drawMinuteCanvas model =
     let
         { val, isInner, cxString, cyString } =
-            calculateUnitByPosition 60 model.settings.minuteStep model.pos
+            calculateUnitByPosition 60 model.settings.minuteStep False model.pos
     in
         div
             [ class "clockpicker-canvas"
@@ -569,7 +569,7 @@ drawHourCanvas : Model -> Html Msg
 drawHourCanvas model =
     let
         { val, isInner, cxString, cyString } =
-            calculateUnitByPosition 12 model.settings.minuteStep model.pos
+            calculateUnitByPosition 12 model.settings.minuteStep True model.pos
     in
         div
             [ class "clockpicker-canvas"
