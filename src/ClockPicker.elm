@@ -4,6 +4,7 @@ module ClockPicker
         , Settings
         , ClockPicker
         , Time
+        , StartTime(..)
         , defaultSettings
         , init
         , update
@@ -13,7 +14,7 @@ module ClockPicker
 {-| A customizable clock picker component.
 
 # ClockPicker
-@docs Msg, ClockPicker, Time
+@docs Msg, ClockPicker, Time, StartTime
 @docs init, update, view
 
 # Settings
@@ -30,6 +31,8 @@ import Json.Decode as Json
 import Svg
 import Svg.Attributes
 import VirtualDom
+import Time as CoreTime
+import Task
 
 
 dialRadius : Float
@@ -75,11 +78,28 @@ type alias Model =
     }
 
 
+type alias Hour =
+    Int
+
+
+type alias Minute =
+    Int
+
+
+{-| StartTime
+-}
+type StartTime
+    = EmptyStartTime
+    | SetStartTime Hour Minute
+    | NowStartTime
+
+
 {-| The type of clock picker settings.
 -}
 type alias Settings =
     { hourStep : Int
     , minuteStep : Int
+    , startTime : StartTime
     }
 
 
@@ -104,6 +124,7 @@ defaultSettings : Settings
 defaultSettings =
     { hourStep = 1
     , minuteStep = 1
+    , startTime = EmptyStartTime
     }
 
 
@@ -115,13 +136,13 @@ emptyPosition =
 {-| The time response record
 -}
 type alias Time =
-    { hour : Int
-    , minute : Int
+    { hour : Hour
+    , minute : Minute
     }
 
 
-defaultTime : Time
-defaultTime =
+emptyTime : Time
+emptyTime =
     Time 0 0
 
 
@@ -141,6 +162,7 @@ type State
 -}
 type Msg
     = NoOp
+    | NewTime CoreTime.Time
     | OpenPicker
     | ClosePicker
     | SetHour Int
@@ -172,9 +194,21 @@ You must execute the returned command for future purposes
 -}
 init : Settings -> ( ClockPicker, Cmd Msg )
 init settings =
-    ( ClockPicker <| Model Closed defaultTime emptyPosition settings
-    , Cmd.none
-    )
+    let
+        ( startTimeModel, startTimeCmd ) =
+            case settings.startTime of
+                EmptyStartTime ->
+                    ( emptyTime, Cmd.none )
+
+                SetStartTime hour minute ->
+                    ( Time hour minute, Cmd.none )
+
+                NowStartTime ->
+                    ( emptyTime, Task.perform NewTime CoreTime.now )
+    in
+        ( ClockPicker <| Model Closed startTimeModel emptyPosition settings
+        , startTimeCmd
+        )
 
 
 {-| update
@@ -184,6 +218,19 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
     case msg of
         NoOp ->
             model ! []
+
+        NewTime newTime ->
+            let
+                hours =
+                    (ceiling <| CoreTime.inHours newTime) % 24
+
+                minutes =
+                    (floor <| CoreTime.inMinutes newTime) % 60
+
+                time =
+                    Time hours minutes
+            in
+                { model | time = time } ! []
 
         OpenPicker ->
             { model | state = HourView } ! []
