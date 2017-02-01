@@ -101,6 +101,7 @@ type alias Settings =
     , minuteStep : Int
     , startTime : StartTime
     , autoClose : Bool
+    , twelveHour : Bool
     }
 
 
@@ -127,6 +128,7 @@ defaultSettings =
     , minuteStep = 1
     , startTime = EmptyStartTime
     , autoClose = False
+    , twelveHour = False
     }
 
 
@@ -145,7 +147,7 @@ type alias Time =
 
 emptyTime : Time
 emptyTime =
-    Time 0 0
+    Time 12 0
 
 
 {-| The ClockPicker model.
@@ -174,6 +176,8 @@ type Msg
     | MouseMove Position
     | ClickHour
     | ClickMinute
+    | ClickAm
+    | ClickPm
     | ShowHour
     | ShowMinute
 
@@ -242,11 +246,14 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
 
         ClickHour ->
             let
+                allowInner =
+                    not settings.twelveHour
+
                 { value, isInner } =
-                    calculateUnitByPosition 12 settings.hourStep True pos
+                    calculateUnitByPosition 12 settings.hourStep allowInner pos
 
                 hour =
-                    valToHour value isInner
+                    valToHour value isInner time.hour settings.twelveHour
 
                 newTime =
                     { time | hour = hour }
@@ -271,6 +278,38 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
                         MinuteView
             in
                 ( ClockPicker { model | time = newTime, state = newState }
+                , Cmd.none
+                , Just newTime
+                )
+
+        ClickAm ->
+            let
+                newHour =
+                    if time.hour > 12 then
+                        time.hour - 12
+                    else
+                        time.hour
+
+                newTime =
+                    { time | hour = newHour }
+            in
+                ( ClockPicker { model | time = newTime }
+                , Cmd.none
+                , Just newTime
+                )
+
+        ClickPm ->
+            let
+                newHour =
+                    if time.hour <= 12 then
+                        time.hour + 12
+                    else
+                        time.hour
+
+                newTime =
+                    { time | hour = newHour }
+            in
+                ( ClockPicker { model | time = newTime }
                 , Cmd.none
                 , Just newTime
                 )
@@ -382,22 +421,28 @@ calculateUnitByPosition units steps allowInner pos =
         FromPositionResult value isInner cxString cyString
 
 
-valToHour : Int -> Bool -> Int
-valToHour value isInner =
+valToHour : Int -> Bool -> Int -> Bool -> Int
+valToHour value isInner previousHour twelveHour =
     let
-        zeroCompensated =
-            if value == 0 then
+        zeroCompensated x =
+            if x == 0 then
                 12
             else
-                value
+                x
 
-        innerCompensated =
+        innerCompensated x =
             if isInner then
-                zeroCompensated + 12
+                x + 12
             else
-                zeroCompensated
+                x
+
+        twelveHourCompensated x =
+            if twelveHour && previousHour > 12 then
+                x + 12
+            else
+                x
     in
-        innerCompensated
+        twelveHourCompensated << innerCompensated << zeroCompensated <| value
 
 
 offsetPosition : Json.Decoder Position
@@ -407,7 +452,10 @@ offsetPosition =
 
 formatTime : Model -> String
 formatTime model =
-    (formatHourFull model.time.hour) ++ ":" ++ (formatMinuteFull model.time.minute)
+    if model.settings.twelveHour then
+        (formatHourTwelveHourFull model.time.hour) ++ ":" ++ (formatMinuteFull model.time.minute) ++ " " ++ (formatAmPm model.time.hour)
+    else
+        (formatHourFull model.time.hour) ++ ":" ++ (formatMinuteFull model.time.minute)
 
 
 clockPickerWrapper : Model -> Html Msg
@@ -528,6 +576,14 @@ drawHourView model =
 
 viewTitle : Model -> Html Msg
 viewTitle model =
+    if model.settings.twelveHour then
+        viewTitleTwelveHour model
+    else
+        viewTitleTwentyFourHour model
+
+
+viewTitleTwentyFourHour : Model -> Html Msg
+viewTitleTwentyFourHour model =
     let
         isActive state =
             if state == model.state then
@@ -549,6 +605,63 @@ viewTitle model =
                 ]
                 [ text (formatMinuteFull model.time.minute) ]
             ]
+
+
+viewTitleTwelveHour : Model -> Html Msg
+viewTitleTwelveHour model =
+    let
+        isActive state =
+            if state == model.state then
+                " text-primary"
+            else
+                ""
+
+        toggleAmPm =
+            if model.time.hour > 12 then
+                ClickAm
+            else
+                ClickPm
+    in
+        div
+            [ class "popover-title" ]
+            [ span
+                [ class <| "clockpicker-span-hours" ++ (isActive HourView)
+                , onClick ShowHour
+                ]
+                [ text (formatHourTwelveHourFull model.time.hour) ]
+            , text ":"
+            , span
+                [ class <| "clockpicker-span-minutes" ++ (isActive MinuteView)
+                , onClick ShowMinute
+                ]
+                [ text (formatMinuteFull model.time.minute) ]
+            , text " "
+            , span
+                [ class <| "clockpicker-span-am-pm"
+                , onClick toggleAmPm
+                ]
+                [ text (formatAmPm model.time.hour) ]
+            ]
+
+
+viewAmPm : Model -> Html Msg
+viewAmPm model =
+    if model.settings.twelveHour then
+        span
+            [ class "clockpicker-am-pm-clock" ]
+            [ button
+                [ class "btn btn-sm btn-default clockpicker-button am-button"
+                , onClick ClickAm
+                ]
+                [ text "AM" ]
+            , button
+                [ class "btn btn-sm btn-default clockpicker-button pm-button"
+                , onClick ClickPm
+                ]
+                [ text "PM" ]
+            ]
+    else
+        text ""
 
 
 drawMinuteView : Model -> Html Msg
@@ -577,6 +690,7 @@ viewPopoverContentMinute model =
             [ drawMinuteTicks model
             , drawMinuteCanvas model
             ]
+        , viewAmPm model
         , span [ class "clockpicker-am-pm-clock" ] []
         ]
 
@@ -624,20 +738,31 @@ viewPopoverContentHour model =
             [ drawHourTicks model
             , drawHourCanvas model
             ]
-        , span [ class "clockpicker-am-pm-clock" ] []
+        , viewAmPm model
         ]
 
 
 drawHourCanvas : Model -> Html Msg
 drawHourCanvas model =
-    drawCanvas ClickHour <| calculateUnitByPosition 12 model.settings.minuteStep True model.pos
+    let
+        allowInner =
+            not model.settings.twelveHour
+    in
+        drawCanvas ClickHour <| calculateUnitByPosition 12 model.settings.minuteStep allowInner model.pos
 
 
 drawHourTicks : Model -> Html Msg
 drawHourTicks model =
-    div
-        [ class "clockpicker-dial clockpicker-hours" ]
-        (List.map (drawTick (SetHour) (formatHour) 12 1) (List.range 1 24))
+    let
+        rangeMax =
+            if model.settings.twelveHour then
+                12
+            else
+                24
+    in
+        div
+            [ class "clockpicker-dial clockpicker-hours" ]
+            (List.map (drawTick (SetHour) (formatHour) 12 1) (List.range 1 rangeMax))
 
 
 formatHour : Int -> String
@@ -658,3 +783,21 @@ formatHourFull hour =
         "0" ++ (toString hour)
     else
         (toString hour)
+
+
+formatHourTwelveHourFull : Int -> String
+formatHourTwelveHourFull hour =
+    if hour == 0 then
+        "12"
+    else if hour > 12 then
+        formatHourFull (hour - 12)
+    else
+        formatHourFull hour
+
+
+formatAmPm : Int -> String
+formatAmPm hour =
+    if hour > 12 then
+        "PM"
+    else
+        "AM"
