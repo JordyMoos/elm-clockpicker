@@ -25,14 +25,14 @@ See the [examples][examples] folder.
 
 | Name | Default | Description |
 | ---- | ------- | ----------- |
-| startTime | EmptyStartTime | Set the initial time of the clockpicker input. Possible values are:<br>EmptyStartTime (Set time to 00:00)<br>SetStartTime Hour Minute (Sets the to the given hour and minute)<br>NowStartTime (Set the time to the current time)<br>See ClockPicker.StartTime type for more information |
+| startTime | EmptyStartTime | Set the initial time of the clockpicker input.<br>Possible values are:<br>`EmptyStartTime` (Set time to 00:00)<br>`SetStartTime Hour Minute` (Sets the to the given hour and minute)<br>`NowStartTime` (Set the time to the current time)<br>See the `ClockPicker.StartTime` type for more information |
 | hourStep | 1 | Set the incremental step for hours |
 | minuteStep | 1 | Set the incremental step for minutes |
 | autoClose | True | Should the ClockPicker close after selecting the minute |
 | twelveHour | False | Use twelve hour style clock with AM and PM |
 | doneText | "Done" | Set the text for the done button |
 
-See ClockPicker.Settings for more information
+See `ClockPicker.Settings` for more information
 
 
 ## CSS
