@@ -102,6 +102,7 @@ type alias Settings =
     , startTime : StartTime
     , autoClose : Bool
     , twelveHour : Bool
+    , doneText : String
     }
 
 
@@ -127,8 +128,9 @@ defaultSettings =
     { hourStep = 1
     , minuteStep = 1
     , startTime = EmptyStartTime
-    , autoClose = False
+    , autoClose = True
     , twelveHour = False
+    , doneText = "Done"
     }
 
 
@@ -570,7 +572,7 @@ drawHourView model =
             [ class "btn btn-sm btn-default btn-block clockpicker-button"
             , onClick ClosePicker
             ]
-            [ text "Done" ]
+            [ text model.settings.doneText ]
         ]
 
 
