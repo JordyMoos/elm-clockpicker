@@ -12,6 +12,11 @@ module ClockPicker
         )
 
 {-| A customizable clock picker component.
+- 24 hour and 12 hour AM PM support.
+- Configure the hour and minute step sizes.
+- Set the initial time or configure it as now.
+
+See the examples and demo on github.
 
 # ClockPicker
 @docs Msg, ClockPicker, Time, StartTime
