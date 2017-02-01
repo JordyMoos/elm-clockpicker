@@ -126,7 +126,7 @@ type alias Time =
 
 defaultTime : Time
 defaultTime =
-    Time 0 0
+    Time 12 0
 
 
 {-| The ClockPicker model.
@@ -199,13 +199,14 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
 
         ClickHour ->
             let
-                allowInner = not settings.twelveHour
+                allowInner =
+                    not settings.twelveHour
 
                 { value, isInner } =
                     calculateUnitByPosition 12 settings.hourStep allowInner pos
 
                 hour =
-                    valToHour value isInner
+                    valToHour value isInner time.hour settings.twelveHour
 
                 newTime =
                     { time | hour = hour }
@@ -237,12 +238,13 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
         ClickAm ->
             let
                 newHour =
-                    if time.hour >= 12 then
+                    if time.hour > 12 then
                         time.hour - 12
                     else
                         time.hour
 
-                newTime = { time | hour = newHour }
+                newTime =
+                    { time | hour = newHour }
             in
                 ( ClockPicker { model | time = newTime }
                 , Cmd.none
@@ -252,12 +254,13 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
         ClickPm ->
             let
                 newHour =
-                    if time.hour < 12 then
+                    if time.hour <= 12 then
                         time.hour + 12
                     else
                         time.hour
 
-                newTime = { time | hour = newHour }
+                newTime =
+                    { time | hour = newHour }
             in
                 ( ClockPicker { model | time = newTime }
                 , Cmd.none
@@ -371,22 +374,28 @@ calculateUnitByPosition units steps allowInner pos =
         FromPositionResult value isInner cxString cyString
 
 
-valToHour : Int -> Bool -> Int
-valToHour value isInner =
+valToHour : Int -> Bool -> Int -> Bool -> Int
+valToHour value isInner previousHour twelveHour =
     let
-        zeroCompensated =
-            if value == 0 then
+        zeroCompensated x =
+            if x == 0 then
                 12
             else
-                value
+                x
 
-        innerCompensated =
+        innerCompensated x =
             if isInner then
-                zeroCompensated + 12
+                x + 12
             else
-                zeroCompensated
+                x
+
+        twelveHourCompensated x =
+            if twelveHour && previousHour > 12 then
+                x + 12
+            else
+                x
     in
-        innerCompensated
+        twelveHourCompensated << innerCompensated << zeroCompensated <| value
 
 
 offsetPosition : Json.Decoder Position
@@ -561,7 +570,7 @@ viewTitleTwelveHour model =
                 ""
 
         toggleAmPm =
-            if model.time.hour >= 12 then
+            if model.time.hour > 12 then
                 ClickAm
             else
                 ClickPm
@@ -689,7 +698,8 @@ viewPopoverContentHour model =
 drawHourCanvas : Model -> Html Msg
 drawHourCanvas model =
     let
-        allowInner = not model.settings.twelveHour
+        allowInner =
+            not model.settings.twelveHour
     in
         drawCanvas ClickHour <| calculateUnitByPosition 12 model.settings.minuteStep allowInner model.pos
 
@@ -727,6 +737,7 @@ formatHourFull hour =
     else
         (toString hour)
 
+
 formatHourTwelveHourFull : Int -> String
 formatHourTwelveHourFull hour =
     if hour == 0 then
@@ -736,9 +747,10 @@ formatHourTwelveHourFull hour =
     else
         formatHourFull hour
 
+
 formatAmPm : Int -> String
 formatAmPm hour =
-    if hour >= 12 then
+    if hour > 12 then
         "PM"
     else
         "AM"
