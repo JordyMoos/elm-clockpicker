@@ -24,21 +24,29 @@ See the [examples][examples] folder and [the ClockPicker demo][demo].
 
 ## Settings
 
-| Name | Default | Description |
-| ---- | ------- | ----------- |
-| startTime | EmptyStartTime | Set the initial time of the clockpicker input.<br>Possible values are:<br>`EmptyStartTime` (Set time to 00:00)<br>`SetStartTime Hour Minute` (Sets the to the given hour and minute)<br>`NowStartTime` (Set the time to the current time)<br>See the `ClockPicker.StartTime` type for more information |
-| hourStep | 1 | Set the incremental step for hours |
-| minuteStep | 1 | Set the incremental step for minutes |
-| autoClose | True | Should the ClockPicker close after selecting the minute |
-| twelveHour | False | Use twelve hour style clock with AM and PM |
-| doneText | "Done" | Set the text for the done button |
+```elm
+type alias Settings =
+    { hourStep : Int
+    , minuteStep : Int
+    , startTime : StartTime
+    , autoClose : Bool
+    , twelveHour : Bool
+    , doneText : String
+    }
+```
 
-See `ClockPicker.Settings` for more information
+```elm
+import ClockPicker exposing (defaultSettings, StartTime(..))
 
+ClockPicker.init { defaultSettings | minuteStep = 5 }
+```
+
+See [ClockPicker.Settings][settings] for detailed information
+[settings]: http://package.elm-lang.org/packages/JordyMoos/elm-clockpicker/latest/ClockPicker#settings
 
 ## CSS
 
-The CSS for the clock picker is distributed separately.  You can grab
+The CSS for the clock picker is distributed separately. You can grab
 the compiled CSS from [here][compiled].
 
 [compiled]: https://github.com/JordyMoos/elm-clockpicker/blob/master/css/elm-clockpicker.css

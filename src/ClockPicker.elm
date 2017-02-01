@@ -94,7 +94,7 @@ type alias Minute =
 {-| The possible start time options
 
 
-        import ClockPicker exposing (Time, TidefaultSettings, StartTime(..))
+        import ClockPicker exposing (defaultSettings, StartTime(..))
 
 
         ClockPicker.init { defaultSettings | startTime = EmptyStartTime }
