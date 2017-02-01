@@ -86,7 +86,21 @@ type alias Minute =
     Int
 
 
-{-| StartTime
+{-| The possible start time options
+
+
+        import ClockPicker exposing (Time, TidefaultSettings, StartTime(..))
+
+
+        ClockPicker.init { defaultSettings | startTime = EmptyStartTime }
+        ClockPicker.init { defaultSettings | startTime = SetStartTime 22 30 }
+        ClockPicker.init { defaultSettings | startTime = NowStartTime }
+
+
+`EmptyStartTime` will set the the start time to 00:00
+`SetStartTime Hour Minute` let you specify the hour and Minute
+`NowStartTime` will set the hour and minute to the current time
+
 -}
 type StartTime
     = EmptyStartTime
@@ -95,6 +109,21 @@ type StartTime
 
 
 {-| The type of clock picker settings.
+
+`hourStep` will let you specify the incremental step size op hours.
+For example setting hourStep to 2 will only allow even hours to be clicked.
+
+`minuteStep` same as for the `hourStep` but then for the minute.
+
+`startTime` lets you specify the startTime of the ClockPicker.
+See `ClockPicker.StartTime` for the options.
+
+`autoClose` Determines if the ClockPicker should close after selecting a minute.
+
+`twelveHour` Configure the ClockPicker to use a 24 view or 12 hour with AM and PM.
+
+`doneText` The text of the done button.
+
 -}
 type alias Settings =
     { hourStep : Int
@@ -190,7 +219,7 @@ type Msg
 
 
 {-| Initialize a ClockPicker given a Settings record.
-You must execute the returned command for future purposes
+You must execute the returned command.
 
 
     init
@@ -219,7 +248,9 @@ init settings =
         )
 
 
-{-| update
+{-| The clock picker update function. The third value in the returned
+tuple represents the picked time, it is `Nothing` if nothing happend
+and `Just Time` if the time is updated.
 -}
 update : Msg -> ClockPicker -> ( ClockPicker, Cmd Msg, Maybe Time )
 update msg (ClockPicker ({ state, pos, time, settings } as model)) =

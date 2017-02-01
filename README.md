@@ -9,9 +9,10 @@ A reusable clock picker component in Elm.
 
 ## Examples
 
-See the [examples][examples] folder.
+See the [examples][examples] folder and [the ClockPicker demo][demo].
 
 [examples]: https://github.com/JordyMoos/elm-clockpicker/tree/master/examples
+[demo]: https://jordymoos.github.io/elm-clockpicker/
 
 
 ## Run examples
