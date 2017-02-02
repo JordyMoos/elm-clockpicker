@@ -424,10 +424,7 @@ calculateUnitByPosition units steps allowInner pos =
             sqrt <| x * x + y * y
 
         isInner =
-            if allowInner && z < ((outerRadius + innerRadius) / 2) then
-                True
-            else
-                False
+            allowInner && z * 2 < outerRadius + innerRadius
 
         unit =
             (toFloat steps) / (toFloat units) * pi * 2
