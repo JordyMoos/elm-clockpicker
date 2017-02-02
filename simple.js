@@ -597,8 +597,7 @@ function toString(v)
 	var type = typeof v;
 	if (type === 'function')
 	{
-		var name = v.func ? v.func.name : v.name;
-		return '<function' + (name === '' ? '' : ':') + name + '>';
+		return '<function>';
 	}
 
 	if (type === 'boolean')
@@ -2073,6 +2072,13 @@ var _elm_lang$core$List$sortBy = _elm_lang$core$Native_List.sortBy;
 var _elm_lang$core$List$sort = function (xs) {
 	return A2(_elm_lang$core$List$sortBy, _elm_lang$core$Basics$identity, xs);
 };
+var _elm_lang$core$List$singleton = function (value) {
+	return {
+		ctor: '::',
+		_0: value,
+		_1: {ctor: '[]'}
+	};
+};
 var _elm_lang$core$List$drop = F2(
 	function (n, list) {
 		drop:
@@ -2891,7 +2897,7 @@ function endsWith(sub, str)
 function indexes(sub, str)
 {
 	var subLen = sub.length;
-	
+
 	if (subLen < 1)
 	{
 		return _elm_lang$core$Native_List.Nil;
@@ -2904,74 +2910,78 @@ function indexes(sub, str)
 	{
 		is.push(i);
 		i = i + subLen;
-	}	
-	
+	}
+
 	return _elm_lang$core$Native_List.fromArray(is);
 }
+
 
 function toInt(s)
 {
 	var len = s.length;
+
+	// if empty
 	if (len === 0)
 	{
-		return _elm_lang$core$Result$Err("could not convert string '" + s + "' to an Int" );
+		return intErr(s);
 	}
-	var start = 0;
-	if (s[0] === '-')
+
+	// if hex
+	var c = s[0];
+	if (c === '0' && s[1] === 'x')
 	{
-		if (len === 1)
+		for (var i = 2; i < len; ++i)
 		{
-			return _elm_lang$core$Result$Err("could not convert string '" + s + "' to an Int" );
+			var c = s[i];
+			if (('0' <= c && c <= '9') || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f'))
+			{
+				continue;
+			}
+			return intErr(s);
 		}
-		start = 1;
+		return _elm_lang$core$Result$Ok(parseInt(s, 16));
 	}
-	for (var i = start; i < len; ++i)
+
+	// is decimal
+	if (c > '9' || (c < '0' && c !== '-' && c !== '+'))
+	{
+		return intErr(s);
+	}
+	for (var i = 1; i < len; ++i)
 	{
 		var c = s[i];
 		if (c < '0' || '9' < c)
 		{
-			return _elm_lang$core$Result$Err("could not convert string '" + s + "' to an Int" );
+			return intErr(s);
 		}
 	}
+
 	return _elm_lang$core$Result$Ok(parseInt(s, 10));
 }
 
+function intErr(s)
+{
+	return _elm_lang$core$Result$Err("could not convert string '" + s + "' to an Int");
+}
+
+
 function toFloat(s)
 {
-	var len = s.length;
-	if (len === 0)
+	// check if it is a hex, octal, or binary number
+	if (s.length === 0 || /[\sxbo]/.test(s))
 	{
-		return _elm_lang$core$Result$Err("could not convert string '" + s + "' to a Float" );
+		return floatErr(s);
 	}
-	var start = 0;
-	if (s[0] === '-')
-	{
-		if (len === 1)
-		{
-			return _elm_lang$core$Result$Err("could not convert string '" + s + "' to a Float" );
-		}
-		start = 1;
-	}
-	var dotCount = 0;
-	for (var i = start; i < len; ++i)
-	{
-		var c = s[i];
-		if ('0' <= c && c <= '9')
-		{
-			continue;
-		}
-		if (c === '.')
-		{
-			dotCount += 1;
-			if (dotCount <= 1)
-			{
-				continue;
-			}
-		}
-		return _elm_lang$core$Result$Err("could not convert string '" + s + "' to a Float" );
-	}
-	return _elm_lang$core$Result$Ok(parseFloat(s));
+	var n = +s;
+	// faster isNaN check
+	return n === n ? _elm_lang$core$Result$Ok(n) : floatErr(s);
 }
+
+function floatErr(s)
+{
+	return _elm_lang$core$Result$Err("could not convert string '" + s + "' to a Float");
+}
+
 
 function toList(str)
 {
@@ -4407,11 +4417,6 @@ function badToString(problem)
 				problem = problem.rest;
 				break;
 
-			case 'index':
-				context += '[' + problem.index + ']';
-				problem = problem.rest;
-				break;
-
 			case 'oneOf':
 				var problems = problem.problems;
 				for (var i = 0; i < problems.length; i++)
@@ -5112,9 +5117,9 @@ function on(name, options, decoder)
 
 function equalEvents(a, b)
 {
-	if (!a.options === b.options)
+	if (a.options !== b.options)
 	{
-		if (a.stopPropagation !== b.stopPropagation || a.preventDefault !== b.preventDefault)
+		if (a.options.stopPropagation !== b.options.stopPropagation || a.options.preventDefault !== b.options.preventDefault)
 		{
 			return false;
 		}
@@ -6390,7 +6395,7 @@ function normalRenderer(parentNode, view)
 var rAF =
 	typeof requestAnimationFrame !== 'undefined'
 		? requestAnimationFrame
-		: function(callback) { callback(); };
+		: function(callback) { setTimeout(callback, 1000 / 60); };
 
 function makeStepper(domNode, view, initialVirtualNode, eventNode)
 {
@@ -7275,15 +7280,8 @@ function setupIncomingPort(name, callback)
 		sentBeforeInit.push(value);
 	}
 
-	function postInitSend(incomingValue)
+	function postInitSend(value)
 	{
-		var result = A2(_elm_lang$core$Json_Decode$decodeValue, converter, incomingValue);
-		if (result.ctor === 'Err')
-		{
-			throw new Error('Trying to send an unexpected type of value through port `' + name + '`:\n' + result._0);
-		}
-
-		var value = result._0;
 		var temp = subs;
 		while (temp.ctor !== '[]')
 		{
@@ -7294,7 +7292,13 @@ function setupIncomingPort(name, callback)
 
 	function send(incomingValue)
 	{
-		currentSend(incomingValue);
+		var result = A2(_elm_lang$core$Json_Decode$decodeValue, converter, incomingValue);
+		if (result.ctor === 'Err')
+		{
+			throw new Error('Trying to send an unexpected type of value through port `' + name + '`:\n' + result._0);
+		}
+
+		currentSend(result._0);
 	}
 
 	return { send: send };
@@ -9382,11 +9386,17 @@ var _elm_lang$svg$Svg_Attributes$accumulate = _elm_lang$virtual_dom$VirtualDom$a
 var _elm_lang$svg$Svg_Attributes$accelerate = _elm_lang$virtual_dom$VirtualDom$attribute('accelerate');
 var _elm_lang$svg$Svg_Attributes$accentHeight = _elm_lang$virtual_dom$VirtualDom$attribute('accent-height');
 
+var _JordyMoos$elm_clockpicker$ClockPicker$formatAmPm = function (hour) {
+	return (_elm_lang$core$Native_Utils.cmp(hour, 12) > 0) ? 'PM' : 'AM';
+};
 var _JordyMoos$elm_clockpicker$ClockPicker$formatHourFull = function (hour) {
 	return _elm_lang$core$Native_Utils.eq(hour, 24) ? '00' : ((_elm_lang$core$Native_Utils.cmp(hour, 10) < 0) ? A2(
 		_elm_lang$core$Basics_ops['++'],
 		'0',
 		_elm_lang$core$Basics$toString(hour)) : _elm_lang$core$Basics$toString(hour));
+};
+var _JordyMoos$elm_clockpicker$ClockPicker$formatHourTwelveHourFull = function (hour) {
+	return _elm_lang$core$Native_Utils.eq(hour, 0) ? '12' : ((_elm_lang$core$Native_Utils.cmp(hour, 12) > 0) ? _JordyMoos$elm_clockpicker$ClockPicker$formatHourFull(hour - 12) : _JordyMoos$elm_clockpicker$ClockPicker$formatHourFull(hour));
 };
 var _JordyMoos$elm_clockpicker$ClockPicker$formatHour = function (hour) {
 	var _p0 = hour;
@@ -9411,7 +9421,19 @@ var _JordyMoos$elm_clockpicker$ClockPicker$formatMinute = function (minute) {
 	}
 };
 var _JordyMoos$elm_clockpicker$ClockPicker$formatTime = function (model) {
-	return A2(
+	return model.settings.twelveHour ? A2(
+		_elm_lang$core$Basics_ops['++'],
+		_JordyMoos$elm_clockpicker$ClockPicker$formatHourTwelveHourFull(model.time.hour),
+		A2(
+			_elm_lang$core$Basics_ops['++'],
+			':',
+			A2(
+				_elm_lang$core$Basics_ops['++'],
+				_JordyMoos$elm_clockpicker$ClockPicker$formatMinuteFull(model.time.minute),
+				A2(
+					_elm_lang$core$Basics_ops['++'],
+					' ',
+					_JordyMoos$elm_clockpicker$ClockPicker$formatAmPm(model.time.hour))))) : A2(
 		_elm_lang$core$Basics_ops['++'],
 		_JordyMoos$elm_clockpicker$ClockPicker$formatHourFull(model.time.hour),
 		A2(
@@ -9424,14 +9446,24 @@ var _JordyMoos$elm_clockpicker$ClockPicker$offsetPosition = A3(
 	_elm_lang$mouse$Mouse$Position,
 	A2(_elm_lang$core$Json_Decode$field, 'offsetX', _elm_lang$core$Json_Decode$int),
 	A2(_elm_lang$core$Json_Decode$field, 'offsetY', _elm_lang$core$Json_Decode$int));
-var _JordyMoos$elm_clockpicker$ClockPicker$valToHour = F2(
-	function (val, isInner) {
-		var zeroCompensated = _elm_lang$core$Native_Utils.eq(val, 0) ? 12 : val;
-		var innerCompensated = isInner ? (zeroCompensated + 12) : zeroCompensated;
-		return innerCompensated;
+var _JordyMoos$elm_clockpicker$ClockPicker$valToHour = F4(
+	function (value, isInner, previousHour, twelveHour) {
+		var twelveHourCompensated = function (x) {
+			return (twelveHour && (_elm_lang$core$Native_Utils.cmp(previousHour, 12) > 0)) ? (x + 12) : x;
+		};
+		var innerCompensated = function (x) {
+			return isInner ? (x + 12) : x;
+		};
+		var zeroCompensated = function (x) {
+			return _elm_lang$core$Native_Utils.eq(x, 0) ? 12 : x;
+		};
+		return function (_p2) {
+			return twelveHourCompensated(
+				innerCompensated(
+					zeroCompensated(_p2)));
+		}(value);
 	});
 var _JordyMoos$elm_clockpicker$ClockPicker$emptyPosition = A2(_elm_lang$mouse$Mouse$Position, 0, 0);
-var _JordyMoos$elm_clockpicker$ClockPicker$defaultSettings = {hourStep: 1, minuteStep: 1};
 var _JordyMoos$elm_clockpicker$ClockPicker$tickRadius = 13.0;
 var _JordyMoos$elm_clockpicker$ClockPicker$tickRadiusString = _elm_lang$core$Basics$toString(_JordyMoos$elm_clockpicker$ClockPicker$tickRadius);
 var _JordyMoos$elm_clockpicker$ClockPicker$innerRadius = 54;
@@ -9439,19 +9471,105 @@ var _JordyMoos$elm_clockpicker$ClockPicker$outerRadius = 80.0;
 var _JordyMoos$elm_clockpicker$ClockPicker$dialRadius = 100.0;
 var _JordyMoos$elm_clockpicker$ClockPicker$dialRadiusString = _elm_lang$core$Basics$toString(_JordyMoos$elm_clockpicker$ClockPicker$dialRadius);
 var _JordyMoos$elm_clockpicker$ClockPicker$diameter = _elm_lang$core$Basics$round(_JordyMoos$elm_clockpicker$ClockPicker$dialRadius * 2);
+var _JordyMoos$elm_clockpicker$ClockPicker$drawTick = F5(
+	function (onClickMsg, formatter, outerRadiusMax, visualStepSize, tick) {
+		var actualValue = tick * visualStepSize;
+		var radian = ((_elm_lang$core$Basics$toFloat(tick) / 12) * _elm_lang$core$Basics$pi) * 2;
+		var radius = (_elm_lang$core$Native_Utils.cmp(tick, outerRadiusMax) > 0) ? _JordyMoos$elm_clockpicker$ClockPicker$innerRadius : _JordyMoos$elm_clockpicker$ClockPicker$outerRadius;
+		var left = (_JordyMoos$elm_clockpicker$ClockPicker$dialRadius + (_elm_lang$core$Basics$sin(radian) * radius)) - _JordyMoos$elm_clockpicker$ClockPicker$tickRadius;
+		var top = (_JordyMoos$elm_clockpicker$ClockPicker$dialRadius - (_elm_lang$core$Basics$cos(radian) * radius)) - _JordyMoos$elm_clockpicker$ClockPicker$tickRadius;
+		return A2(
+			_elm_lang$html$Html$div,
+			{
+				ctor: '::',
+				_0: _elm_lang$html$Html_Attributes$class('clockpicker-tick'),
+				_1: {
+					ctor: '::',
+					_0: _elm_lang$html$Html_Attributes$style(
+						{
+							ctor: '::',
+							_0: {
+								ctor: '_Tuple2',
+								_0: 'left',
+								_1: A2(
+									_elm_lang$core$Basics_ops['++'],
+									_elm_lang$core$Basics$toString(left),
+									'px')
+							},
+							_1: {
+								ctor: '::',
+								_0: {
+									ctor: '_Tuple2',
+									_0: 'top',
+									_1: A2(
+										_elm_lang$core$Basics_ops['++'],
+										_elm_lang$core$Basics$toString(top),
+										'px')
+								},
+								_1: {ctor: '[]'}
+							}
+						}),
+					_1: {
+						ctor: '::',
+						_0: _elm_lang$html$Html_Events$onClick(
+							onClickMsg(actualValue)),
+						_1: {ctor: '[]'}
+					}
+				}
+			},
+			{
+				ctor: '::',
+				_0: _elm_lang$html$Html$text(
+					formatter(actualValue)),
+				_1: {ctor: '[]'}
+			});
+	});
 var _JordyMoos$elm_clockpicker$ClockPicker$Model = F4(
 	function (a, b, c, d) {
 		return {state: a, time: b, pos: c, settings: d};
 	});
-var _JordyMoos$elm_clockpicker$ClockPicker$Settings = F2(
-	function (a, b) {
-		return {hourStep: a, minuteStep: b};
+var _JordyMoos$elm_clockpicker$ClockPicker$Settings = F6(
+	function (a, b, c, d, e, f) {
+		return {hourStep: a, minuteStep: b, startTime: c, autoClose: d, twelveHour: e, doneText: f};
+	});
+var _JordyMoos$elm_clockpicker$ClockPicker$FromPositionResult = F4(
+	function (a, b, c, d) {
+		return {value: a, isInner: b, cxString: c, cyString: d};
+	});
+var _JordyMoos$elm_clockpicker$ClockPicker$calculateUnitByPosition = F4(
+	function (units, steps, allowInner, pos) {
+		var unit = ((_elm_lang$core$Basics$toFloat(steps) / _elm_lang$core$Basics$toFloat(units)) * _elm_lang$core$Basics$pi) * 2;
+		var y = _elm_lang$core$Basics$toFloat(pos.y) - _JordyMoos$elm_clockpicker$ClockPicker$dialRadius;
+		var x = _elm_lang$core$Basics$toFloat(pos.x) - _JordyMoos$elm_clockpicker$ClockPicker$dialRadius;
+		var radianTemp = A2(
+			_elm_lang$core$Basics$atan2,
+			x,
+			_elm_lang$core$Basics$negate(y));
+		var radian = (_elm_lang$core$Native_Utils.cmp(radianTemp, 0) < 0) ? ((_elm_lang$core$Basics$pi * 2) + radianTemp) : radianTemp;
+		var value = steps * _elm_lang$core$Basics$round(radian / unit);
+		var radianRounded = _elm_lang$core$Basics$toFloat(value) * unit;
+		var z = _elm_lang$core$Basics$sqrt((x * x) + (y * y));
+		var isInner = (allowInner && (_elm_lang$core$Native_Utils.cmp(z, (_JordyMoos$elm_clockpicker$ClockPicker$outerRadius + _JordyMoos$elm_clockpicker$ClockPicker$innerRadius) / 2) < 0)) ? true : false;
+		var radius = isInner ? _JordyMoos$elm_clockpicker$ClockPicker$innerRadius : _JordyMoos$elm_clockpicker$ClockPicker$outerRadius;
+		var cx = _elm_lang$core$Basics$sin(radianRounded) * radius;
+		var cxString = _elm_lang$core$Basics$toString(cx);
+		var cy = _elm_lang$core$Basics$negate(
+			_elm_lang$core$Basics$cos(radianRounded) * radius);
+		var cyString = _elm_lang$core$Basics$toString(cy);
+		return A4(_JordyMoos$elm_clockpicker$ClockPicker$FromPositionResult, value, isInner, cxString, cyString);
 	});
 var _JordyMoos$elm_clockpicker$ClockPicker$Time = F2(
 	function (a, b) {
 		return {hour: a, minute: b};
 	});
-var _JordyMoos$elm_clockpicker$ClockPicker$defaultTime = A2(_JordyMoos$elm_clockpicker$ClockPicker$Time, 0, 0);
+var _JordyMoos$elm_clockpicker$ClockPicker$emptyTime = A2(_JordyMoos$elm_clockpicker$ClockPicker$Time, 12, 0);
+var _JordyMoos$elm_clockpicker$ClockPicker$NowStartTime = {ctor: 'NowStartTime'};
+var _JordyMoos$elm_clockpicker$ClockPicker$SetStartTime = F2(
+	function (a, b) {
+		return {ctor: 'SetStartTime', _0: a, _1: b};
+	});
+var _JordyMoos$elm_clockpicker$ClockPicker$EmptyStartTime = {ctor: 'EmptyStartTime'};
+var _JordyMoos$elm_clockpicker$ClockPicker$defaultSettings = {hourStep: 1, minuteStep: 1, startTime: _JordyMoos$elm_clockpicker$ClockPicker$EmptyStartTime, autoClose: true, twelveHour: false, doneText: 'Done'};
 var _JordyMoos$elm_clockpicker$ClockPicker$ClockPicker = function (a) {
 	return {ctor: 'ClockPicker', _0: a};
 };
@@ -9466,113 +9584,139 @@ _JordyMoos$elm_clockpicker$ClockPicker_ops['!'] = F2(
 		};
 	});
 var _JordyMoos$elm_clockpicker$ClockPicker$Closed = {ctor: 'Closed'};
-var _JordyMoos$elm_clockpicker$ClockPicker$init = function (settings) {
-	return {
-		ctor: '_Tuple2',
-		_0: _JordyMoos$elm_clockpicker$ClockPicker$ClockPicker(
-			A4(_JordyMoos$elm_clockpicker$ClockPicker$Model, _JordyMoos$elm_clockpicker$ClockPicker$Closed, _JordyMoos$elm_clockpicker$ClockPicker$defaultTime, _JordyMoos$elm_clockpicker$ClockPicker$emptyPosition, settings)),
-		_1: _elm_lang$core$Platform_Cmd$none
-	};
-};
 var _JordyMoos$elm_clockpicker$ClockPicker$MinuteView = {ctor: 'MinuteView'};
 var _JordyMoos$elm_clockpicker$ClockPicker$HourView = {ctor: 'HourView'};
 var _JordyMoos$elm_clockpicker$ClockPicker$update = F2(
-	function (msg, _p2) {
-		var _p3 = _p2;
-		var _p8 = _p3._0.time;
-		var _p7 = _p3._0.settings;
-		var _p6 = _p3._0.pos;
-		var _p5 = _p3._0;
-		var _p4 = msg;
-		switch (_p4.ctor) {
+	function (msg, _p3) {
+		var _p4 = _p3;
+		var _p12 = _p4._0.time;
+		var _p11 = _p4._0.settings;
+		var _p10 = _p4._0.pos;
+		var _p9 = _p4._0;
+		var _p5 = msg;
+		switch (_p5.ctor) {
 			case 'NoOp':
 				return A2(
 					_JordyMoos$elm_clockpicker$ClockPicker_ops['!'],
-					_p5,
+					_p9,
+					{ctor: '[]'});
+			case 'NewTime':
+				var _p6 = _p5._0;
+				var minutes = A2(
+					_elm_lang$core$Basics_ops['%'],
+					_elm_lang$core$Basics$floor(
+						_elm_lang$core$Time$inMinutes(_p6)),
+					60);
+				var hours = A2(
+					_elm_lang$core$Basics_ops['%'],
+					_elm_lang$core$Basics$ceiling(
+						_elm_lang$core$Time$inHours(_p6)),
+					24);
+				var time = A2(_JordyMoos$elm_clockpicker$ClockPicker$Time, hours, minutes);
+				return A2(
+					_JordyMoos$elm_clockpicker$ClockPicker_ops['!'],
+					_elm_lang$core$Native_Utils.update(
+						_p9,
+						{time: time}),
 					{ctor: '[]'});
 			case 'OpenPicker':
 				return A2(
 					_JordyMoos$elm_clockpicker$ClockPicker_ops['!'],
 					_elm_lang$core$Native_Utils.update(
-						_p5,
+						_p9,
 						{state: _JordyMoos$elm_clockpicker$ClockPicker$HourView}),
 					{ctor: '[]'});
 			case 'ClosePicker':
 				return A2(
 					_JordyMoos$elm_clockpicker$ClockPicker_ops['!'],
 					_elm_lang$core$Native_Utils.update(
-						_p5,
+						_p9,
 						{state: _JordyMoos$elm_clockpicker$ClockPicker$Closed}),
 					{ctor: '[]'});
 			case 'ClickHour':
-				var unit = (_elm_lang$core$Basics$toFloat(_p7.hourStep) / 6) * _elm_lang$core$Basics$pi;
-				var y = _elm_lang$core$Basics$toFloat(_p6.y) - _JordyMoos$elm_clockpicker$ClockPicker$dialRadius;
-				var x = _elm_lang$core$Basics$toFloat(_p6.x) - _JordyMoos$elm_clockpicker$ClockPicker$dialRadius;
-				var radianTemp = A2(
-					_elm_lang$core$Basics$atan2,
-					x,
-					_elm_lang$core$Basics$negate(y));
-				var radian = (_elm_lang$core$Native_Utils.cmp(radianTemp, 0) < 0) ? ((_elm_lang$core$Basics$pi * 2) + radianTemp) : radianTemp;
-				var val = _p7.hourStep * _elm_lang$core$Basics$round(radian / unit);
-				var z = _elm_lang$core$Basics$sqrt((x * x) + (y * y));
-				var isInner = (_elm_lang$core$Native_Utils.cmp(z, (_JordyMoos$elm_clockpicker$ClockPicker$outerRadius + _JordyMoos$elm_clockpicker$ClockPicker$innerRadius) / 2) < 0) ? true : false;
-				var hour = A2(_JordyMoos$elm_clockpicker$ClockPicker$valToHour, val, isInner);
+				var allowInner = !_p11.twelveHour;
+				var _p7 = A4(_JordyMoos$elm_clockpicker$ClockPicker$calculateUnitByPosition, 12, _p11.hourStep, allowInner, _p10);
+				var value = _p7.value;
+				var isInner = _p7.isInner;
+				var hour = A4(_JordyMoos$elm_clockpicker$ClockPicker$valToHour, value, isInner, _p12.hour, _p11.twelveHour);
 				var newTime = _elm_lang$core$Native_Utils.update(
-					_p8,
+					_p12,
 					{hour: hour});
 				return {
 					ctor: '_Tuple3',
 					_0: _JordyMoos$elm_clockpicker$ClockPicker$ClockPicker(
 						_elm_lang$core$Native_Utils.update(
-							_p5,
+							_p9,
 							{time: newTime, state: _JordyMoos$elm_clockpicker$ClockPicker$MinuteView})),
 					_1: _elm_lang$core$Platform_Cmd$none,
 					_2: _elm_lang$core$Maybe$Just(newTime)
 				};
 			case 'ClickMinute':
-				var unit = (_elm_lang$core$Basics$toFloat(_p7.minuteStep) / 30) * _elm_lang$core$Basics$pi;
-				var y = _elm_lang$core$Basics$toFloat(_p6.y) - _JordyMoos$elm_clockpicker$ClockPicker$dialRadius;
-				var x = _elm_lang$core$Basics$toFloat(_p6.x) - _JordyMoos$elm_clockpicker$ClockPicker$dialRadius;
-				var radianTemp = A2(
-					_elm_lang$core$Basics$atan2,
-					x,
-					_elm_lang$core$Basics$negate(y));
-				var radian = (_elm_lang$core$Native_Utils.cmp(radianTemp, 0) < 0) ? ((_elm_lang$core$Basics$pi * 2) + radianTemp) : radianTemp;
-				var val = _p7.minuteStep * _elm_lang$core$Basics$round(radian / unit);
+				var newState = _p11.autoClose ? _JordyMoos$elm_clockpicker$ClockPicker$Closed : _JordyMoos$elm_clockpicker$ClockPicker$MinuteView;
+				var _p8 = A4(_JordyMoos$elm_clockpicker$ClockPicker$calculateUnitByPosition, 60, _p11.minuteStep, false, _p10);
+				var value = _p8.value;
 				var newTime = _elm_lang$core$Native_Utils.update(
-					_p8,
-					{minute: val});
+					_p12,
+					{minute: value});
 				return {
 					ctor: '_Tuple3',
 					_0: _JordyMoos$elm_clockpicker$ClockPicker$ClockPicker(
 						_elm_lang$core$Native_Utils.update(
-							_p5,
-							{time: newTime, state: _JordyMoos$elm_clockpicker$ClockPicker$Closed})),
+							_p9,
+							{time: newTime, state: newState})),
+					_1: _elm_lang$core$Platform_Cmd$none,
+					_2: _elm_lang$core$Maybe$Just(newTime)
+				};
+			case 'ClickAm':
+				var newHour = (_elm_lang$core$Native_Utils.cmp(_p12.hour, 12) > 0) ? (_p12.hour - 12) : _p12.hour;
+				var newTime = _elm_lang$core$Native_Utils.update(
+					_p12,
+					{hour: newHour});
+				return {
+					ctor: '_Tuple3',
+					_0: _JordyMoos$elm_clockpicker$ClockPicker$ClockPicker(
+						_elm_lang$core$Native_Utils.update(
+							_p9,
+							{time: newTime})),
+					_1: _elm_lang$core$Platform_Cmd$none,
+					_2: _elm_lang$core$Maybe$Just(newTime)
+				};
+			case 'ClickPm':
+				var newHour = (_elm_lang$core$Native_Utils.cmp(_p12.hour, 12) < 1) ? (_p12.hour + 12) : _p12.hour;
+				var newTime = _elm_lang$core$Native_Utils.update(
+					_p12,
+					{hour: newHour});
+				return {
+					ctor: '_Tuple3',
+					_0: _JordyMoos$elm_clockpicker$ClockPicker$ClockPicker(
+						_elm_lang$core$Native_Utils.update(
+							_p9,
+							{time: newTime})),
 					_1: _elm_lang$core$Platform_Cmd$none,
 					_2: _elm_lang$core$Maybe$Just(newTime)
 				};
 			case 'SetHour':
 				var newTime = _elm_lang$core$Native_Utils.update(
-					_p8,
-					{hour: _p4._0});
+					_p12,
+					{hour: _p5._0});
 				return {
 					ctor: '_Tuple3',
 					_0: _JordyMoos$elm_clockpicker$ClockPicker$ClockPicker(
 						_elm_lang$core$Native_Utils.update(
-							_p5,
+							_p9,
 							{time: newTime, state: _JordyMoos$elm_clockpicker$ClockPicker$MinuteView})),
 					_1: _elm_lang$core$Platform_Cmd$none,
 					_2: _elm_lang$core$Maybe$Just(newTime)
 				};
 			case 'SetMinute':
 				var newTime = _elm_lang$core$Native_Utils.update(
-					_p8,
-					{minute: _p4._0});
+					_p12,
+					{minute: _p5._0});
 				return {
 					ctor: '_Tuple3',
 					_0: _JordyMoos$elm_clockpicker$ClockPicker$ClockPicker(
 						_elm_lang$core$Native_Utils.update(
-							_p5,
+							_p9,
 							{time: newTime, state: _JordyMoos$elm_clockpicker$ClockPicker$Closed})),
 					_1: _elm_lang$core$Platform_Cmd$none,
 					_2: _elm_lang$core$Maybe$Just(newTime)
@@ -9581,42 +9725,45 @@ var _JordyMoos$elm_clockpicker$ClockPicker$update = F2(
 				return A2(
 					_JordyMoos$elm_clockpicker$ClockPicker_ops['!'],
 					_elm_lang$core$Native_Utils.update(
-						_p5,
-						{pos: _p4._0}),
+						_p9,
+						{pos: _p5._0}),
 					{ctor: '[]'});
 			case 'DragEnd':
 				return A2(
 					_JordyMoos$elm_clockpicker$ClockPicker_ops['!'],
 					_elm_lang$core$Native_Utils.update(
-						_p5,
-						{pos: _p4._0}),
+						_p9,
+						{pos: _p5._0}),
 					{ctor: '[]'});
 			case 'MouseMove':
 				return A2(
 					_JordyMoos$elm_clockpicker$ClockPicker_ops['!'],
 					_elm_lang$core$Native_Utils.update(
-						_p5,
-						{pos: _p4._0}),
+						_p9,
+						{pos: _p5._0}),
 					{ctor: '[]'});
 			case 'ShowHour':
 				return A2(
 					_JordyMoos$elm_clockpicker$ClockPicker_ops['!'],
 					_elm_lang$core$Native_Utils.update(
-						_p5,
+						_p9,
 						{state: _JordyMoos$elm_clockpicker$ClockPicker$HourView}),
 					{ctor: '[]'});
 			default:
 				return A2(
 					_JordyMoos$elm_clockpicker$ClockPicker_ops['!'],
 					_elm_lang$core$Native_Utils.update(
-						_p5,
+						_p9,
 						{state: _JordyMoos$elm_clockpicker$ClockPicker$MinuteView}),
 					{ctor: '[]'});
 		}
 	});
 var _JordyMoos$elm_clockpicker$ClockPicker$ShowMinute = {ctor: 'ShowMinute'};
 var _JordyMoos$elm_clockpicker$ClockPicker$ShowHour = {ctor: 'ShowHour'};
-var _JordyMoos$elm_clockpicker$ClockPicker$viewTitle = function (model) {
+var _JordyMoos$elm_clockpicker$ClockPicker$viewTitleTwentyFourHour = function (model) {
+	var isActive = function (state) {
+		return _elm_lang$core$Native_Utils.eq(state, model.state) ? ' text-primary' : '';
+	};
 	return A2(
 		_elm_lang$html$Html$div,
 		{
@@ -9630,7 +9777,11 @@ var _JordyMoos$elm_clockpicker$ClockPicker$viewTitle = function (model) {
 				_elm_lang$html$Html$span,
 				{
 					ctor: '::',
-					_0: _elm_lang$html$Html_Attributes$class('clockpicker-span-hours text-primary'),
+					_0: _elm_lang$html$Html_Attributes$class(
+						A2(
+							_elm_lang$core$Basics_ops['++'],
+							'clockpicker-span-hours',
+							isActive(_JordyMoos$elm_clockpicker$ClockPicker$HourView))),
 					_1: {
 						ctor: '::',
 						_0: _elm_lang$html$Html_Events$onClick(_JordyMoos$elm_clockpicker$ClockPicker$ShowHour),
@@ -9652,7 +9803,11 @@ var _JordyMoos$elm_clockpicker$ClockPicker$viewTitle = function (model) {
 						_elm_lang$html$Html$span,
 						{
 							ctor: '::',
-							_0: _elm_lang$html$Html_Attributes$class('clockpicker-span-minutes'),
+							_0: _elm_lang$html$Html_Attributes$class(
+								A2(
+									_elm_lang$core$Basics_ops['++'],
+									'clockpicker-span-minutes',
+									isActive(_JordyMoos$elm_clockpicker$ClockPicker$MinuteView))),
 							_1: {
 								ctor: '::',
 								_0: _elm_lang$html$Html_Events$onClick(_JordyMoos$elm_clockpicker$ClockPicker$ShowMinute),
@@ -9670,110 +9825,215 @@ var _JordyMoos$elm_clockpicker$ClockPicker$viewTitle = function (model) {
 			}
 		});
 };
+var _JordyMoos$elm_clockpicker$ClockPicker$ClickPm = {ctor: 'ClickPm'};
+var _JordyMoos$elm_clockpicker$ClockPicker$ClickAm = {ctor: 'ClickAm'};
+var _JordyMoos$elm_clockpicker$ClockPicker$viewTitleTwelveHour = function (model) {
+	var toggleAmPm = (_elm_lang$core$Native_Utils.cmp(model.time.hour, 12) > 0) ? _JordyMoos$elm_clockpicker$ClockPicker$ClickAm : _JordyMoos$elm_clockpicker$ClockPicker$ClickPm;
+	var isActive = function (state) {
+		return _elm_lang$core$Native_Utils.eq(state, model.state) ? ' text-primary' : '';
+	};
+	return A2(
+		_elm_lang$html$Html$div,
+		{
+			ctor: '::',
+			_0: _elm_lang$html$Html_Attributes$class('popover-title'),
+			_1: {ctor: '[]'}
+		},
+		{
+			ctor: '::',
+			_0: A2(
+				_elm_lang$html$Html$span,
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html_Attributes$class(
+						A2(
+							_elm_lang$core$Basics_ops['++'],
+							'clockpicker-span-hours',
+							isActive(_JordyMoos$elm_clockpicker$ClockPicker$HourView))),
+					_1: {
+						ctor: '::',
+						_0: _elm_lang$html$Html_Events$onClick(_JordyMoos$elm_clockpicker$ClockPicker$ShowHour),
+						_1: {ctor: '[]'}
+					}
+				},
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html$text(
+						_JordyMoos$elm_clockpicker$ClockPicker$formatHourTwelveHourFull(model.time.hour)),
+					_1: {ctor: '[]'}
+				}),
+			_1: {
+				ctor: '::',
+				_0: _elm_lang$html$Html$text(':'),
+				_1: {
+					ctor: '::',
+					_0: A2(
+						_elm_lang$html$Html$span,
+						{
+							ctor: '::',
+							_0: _elm_lang$html$Html_Attributes$class(
+								A2(
+									_elm_lang$core$Basics_ops['++'],
+									'clockpicker-span-minutes',
+									isActive(_JordyMoos$elm_clockpicker$ClockPicker$MinuteView))),
+							_1: {
+								ctor: '::',
+								_0: _elm_lang$html$Html_Events$onClick(_JordyMoos$elm_clockpicker$ClockPicker$ShowMinute),
+								_1: {ctor: '[]'}
+							}
+						},
+						{
+							ctor: '::',
+							_0: _elm_lang$html$Html$text(
+								_JordyMoos$elm_clockpicker$ClockPicker$formatMinuteFull(model.time.minute)),
+							_1: {ctor: '[]'}
+						}),
+					_1: {
+						ctor: '::',
+						_0: _elm_lang$html$Html$text(' '),
+						_1: {
+							ctor: '::',
+							_0: A2(
+								_elm_lang$html$Html$span,
+								{
+									ctor: '::',
+									_0: _elm_lang$html$Html_Attributes$class('clockpicker-span-am-pm'),
+									_1: {
+										ctor: '::',
+										_0: _elm_lang$html$Html_Events$onClick(toggleAmPm),
+										_1: {ctor: '[]'}
+									}
+								},
+								{
+									ctor: '::',
+									_0: _elm_lang$html$Html$text(
+										_JordyMoos$elm_clockpicker$ClockPicker$formatAmPm(model.time.hour)),
+									_1: {ctor: '[]'}
+								}),
+							_1: {ctor: '[]'}
+						}
+					}
+				}
+			}
+		});
+};
+var _JordyMoos$elm_clockpicker$ClockPicker$viewTitle = function (model) {
+	return model.settings.twelveHour ? _JordyMoos$elm_clockpicker$ClockPicker$viewTitleTwelveHour(model) : _JordyMoos$elm_clockpicker$ClockPicker$viewTitleTwentyFourHour(model);
+};
+var _JordyMoos$elm_clockpicker$ClockPicker$viewAmPm = function (model) {
+	return model.settings.twelveHour ? A2(
+		_elm_lang$html$Html$span,
+		{
+			ctor: '::',
+			_0: _elm_lang$html$Html_Attributes$class('clockpicker-am-pm-clock'),
+			_1: {ctor: '[]'}
+		},
+		{
+			ctor: '::',
+			_0: A2(
+				_elm_lang$html$Html$button,
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html_Attributes$class('btn btn-sm btn-default clockpicker-button am-button'),
+					_1: {
+						ctor: '::',
+						_0: _elm_lang$html$Html_Events$onClick(_JordyMoos$elm_clockpicker$ClockPicker$ClickAm),
+						_1: {ctor: '[]'}
+					}
+				},
+				{
+					ctor: '::',
+					_0: _elm_lang$html$Html$text('AM'),
+					_1: {ctor: '[]'}
+				}),
+			_1: {
+				ctor: '::',
+				_0: A2(
+					_elm_lang$html$Html$button,
+					{
+						ctor: '::',
+						_0: _elm_lang$html$Html_Attributes$class('btn btn-sm btn-default clockpicker-button pm-button'),
+						_1: {
+							ctor: '::',
+							_0: _elm_lang$html$Html_Events$onClick(_JordyMoos$elm_clockpicker$ClockPicker$ClickPm),
+							_1: {ctor: '[]'}
+						}
+					},
+					{
+						ctor: '::',
+						_0: _elm_lang$html$Html$text('PM'),
+						_1: {ctor: '[]'}
+					}),
+				_1: {ctor: '[]'}
+			}
+		}) : _elm_lang$html$Html$text('');
+};
 var _JordyMoos$elm_clockpicker$ClockPicker$ClickMinute = {ctor: 'ClickMinute'};
 var _JordyMoos$elm_clockpicker$ClockPicker$ClickHour = {ctor: 'ClickHour'};
 var _JordyMoos$elm_clockpicker$ClockPicker$MouseMove = function (a) {
 	return {ctor: 'MouseMove', _0: a};
 };
-var _JordyMoos$elm_clockpicker$ClockPicker$drawMinuteCanvas = function (model) {
-	var radius = _JordyMoos$elm_clockpicker$ClockPicker$outerRadius;
-	var unit = (_elm_lang$core$Basics$toFloat(model.settings.minuteStep) / 30) * _elm_lang$core$Basics$pi;
-	var y = _elm_lang$core$Basics$toFloat(model.pos.y) - _JordyMoos$elm_clockpicker$ClockPicker$dialRadius;
-	var x = _elm_lang$core$Basics$toFloat(model.pos.x) - _JordyMoos$elm_clockpicker$ClockPicker$dialRadius;
-	var radianTemp = A2(
-		_elm_lang$core$Basics$atan2,
-		x,
-		_elm_lang$core$Basics$negate(y));
-	var radian = (_elm_lang$core$Native_Utils.cmp(radianTemp, 0) < 0) ? ((_elm_lang$core$Basics$pi * 2) + radianTemp) : radianTemp;
-	var val = _elm_lang$core$Basics$round(radian / unit);
-	var radianRounded = _elm_lang$core$Basics$toFloat(val) * unit;
-	var cx = _elm_lang$core$Basics$sin(radianRounded) * radius;
-	var cxString = _elm_lang$core$Basics$toString(cx);
-	var cy = _elm_lang$core$Basics$negate(
-		_elm_lang$core$Basics$cos(radianRounded) * radius);
-	var cyString = _elm_lang$core$Basics$toString(cy);
-	var z = _elm_lang$core$Basics$sqrt((x * x) + (y * y));
-	return A2(
-		_elm_lang$html$Html$div,
-		{
-			ctor: '::',
-			_0: _elm_lang$html$Html_Attributes$class('clockpicker-canvas'),
-			_1: {
+var _JordyMoos$elm_clockpicker$ClockPicker$drawCanvas = F2(
+	function (onClickMsg, result) {
+		return A2(
+			_elm_lang$html$Html$div,
+			{
 				ctor: '::',
-				_0: _elm_lang$html$Html_Events$onClick(_JordyMoos$elm_clockpicker$ClockPicker$ClickMinute),
-				_1: {ctor: '[]'}
-			}
-		},
-		{
-			ctor: '::',
-			_0: A2(
-				_elm_lang$svg$Svg$svg,
-				{
+				_0: _elm_lang$html$Html_Attributes$class('clockpicker-canvas'),
+				_1: {
 					ctor: '::',
-					_0: _elm_lang$html$Html_Attributes$width(_JordyMoos$elm_clockpicker$ClockPicker$diameter),
-					_1: {
+					_0: _elm_lang$html$Html_Events$onClick(onClickMsg),
+					_1: {ctor: '[]'}
+				}
+			},
+			{
+				ctor: '::',
+				_0: A2(
+					_elm_lang$svg$Svg$svg,
+					{
 						ctor: '::',
-						_0: _elm_lang$html$Html_Attributes$height(_JordyMoos$elm_clockpicker$ClockPicker$diameter),
-						_1: {ctor: '[]'}
-					}
-				},
-				{
-					ctor: '::',
-					_0: A2(
-						_elm_lang$svg$Svg$g,
-						{
+						_0: _elm_lang$html$Html_Attributes$width(_JordyMoos$elm_clockpicker$ClockPicker$diameter),
+						_1: {
 							ctor: '::',
-							_0: _elm_lang$svg$Svg_Attributes$transform(
-								A2(
-									_elm_lang$core$Basics_ops['++'],
-									'translate(',
+							_0: _elm_lang$html$Html_Attributes$height(_JordyMoos$elm_clockpicker$ClockPicker$diameter),
+							_1: {ctor: '[]'}
+						}
+					},
+					{
+						ctor: '::',
+						_0: A2(
+							_elm_lang$svg$Svg$g,
+							{
+								ctor: '::',
+								_0: _elm_lang$svg$Svg_Attributes$transform(
 									A2(
 										_elm_lang$core$Basics_ops['++'],
-										_JordyMoos$elm_clockpicker$ClockPicker$dialRadiusString,
+										'translate(',
 										A2(
 											_elm_lang$core$Basics_ops['++'],
-											',',
-											A2(_elm_lang$core$Basics_ops['++'], _JordyMoos$elm_clockpicker$ClockPicker$dialRadiusString, ')'))))),
-							_1: {ctor: '[]'}
-						},
-						{
-							ctor: '::',
-							_0: A2(
-								_elm_lang$svg$Svg$line,
-								{
-									ctor: '::',
-									_0: _elm_lang$svg$Svg_Attributes$x1('0'),
-									_1: {
-										ctor: '::',
-										_0: _elm_lang$svg$Svg_Attributes$y1('0'),
-										_1: {
-											ctor: '::',
-											_0: _elm_lang$svg$Svg_Attributes$x2(cxString),
-											_1: {
-												ctor: '::',
-												_0: _elm_lang$svg$Svg_Attributes$y2(cyString),
-												_1: {ctor: '[]'}
-											}
-										}
-									}
-								},
-								{ctor: '[]'}),
-							_1: {
+											_JordyMoos$elm_clockpicker$ClockPicker$dialRadiusString,
+											A2(
+												_elm_lang$core$Basics_ops['++'],
+												',',
+												A2(_elm_lang$core$Basics_ops['++'], _JordyMoos$elm_clockpicker$ClockPicker$dialRadiusString, ')'))))),
+								_1: {ctor: '[]'}
+							},
+							{
 								ctor: '::',
 								_0: A2(
-									_elm_lang$svg$Svg$circle,
+									_elm_lang$svg$Svg$line,
 									{
 										ctor: '::',
-										_0: _elm_lang$svg$Svg_Attributes$class('clockpicker-canvas-fg'),
+										_0: _elm_lang$svg$Svg_Attributes$x1('0'),
 										_1: {
 											ctor: '::',
-											_0: _elm_lang$svg$Svg_Attributes$r('3.5'),
+											_0: _elm_lang$svg$Svg_Attributes$y1('0'),
 											_1: {
 												ctor: '::',
-												_0: _elm_lang$svg$Svg_Attributes$cx(cxString),
+												_0: _elm_lang$svg$Svg_Attributes$x2(result.cxString),
 												_1: {
 													ctor: '::',
-													_0: _elm_lang$svg$Svg_Attributes$cy(cyString),
+													_0: _elm_lang$svg$Svg_Attributes$y2(result.cyString),
 													_1: {ctor: '[]'}
 												}
 											}
@@ -9786,21 +10046,17 @@ var _JordyMoos$elm_clockpicker$ClockPicker$drawMinuteCanvas = function (model) {
 										_elm_lang$svg$Svg$circle,
 										{
 											ctor: '::',
-											_0: _elm_lang$svg$Svg_Attributes$class('clockpicker-canvas-bg'),
+											_0: _elm_lang$svg$Svg_Attributes$class('clockpicker-canvas-fg'),
 											_1: {
 												ctor: '::',
-												_0: _elm_lang$svg$Svg_Attributes$r(_JordyMoos$elm_clockpicker$ClockPicker$tickRadiusString),
+												_0: _elm_lang$svg$Svg_Attributes$r('3.5'),
 												_1: {
 													ctor: '::',
-													_0: _elm_lang$svg$Svg_Attributes$cx(cxString),
+													_0: _elm_lang$svg$Svg_Attributes$cx(result.cxString),
 													_1: {
 														ctor: '::',
-														_0: _elm_lang$svg$Svg_Attributes$cy(cyString),
-														_1: {
-															ctor: '::',
-															_0: _elm_lang$svg$Svg_Attributes$fillOpacity('0.5'),
-															_1: {ctor: '[]'}
-														}
+														_0: _elm_lang$svg$Svg_Attributes$cy(result.cyString),
+														_1: {ctor: '[]'}
 													}
 												}
 											}
@@ -9812,247 +10068,96 @@ var _JordyMoos$elm_clockpicker$ClockPicker$drawMinuteCanvas = function (model) {
 											_elm_lang$svg$Svg$circle,
 											{
 												ctor: '::',
-												_0: _elm_lang$svg$Svg_Attributes$class('clockpicker-canvas-bearing'),
+												_0: _elm_lang$svg$Svg_Attributes$class('clockpicker-canvas-bg'),
 												_1: {
 													ctor: '::',
-													_0: _elm_lang$svg$Svg_Attributes$r('2'),
+													_0: _elm_lang$svg$Svg_Attributes$r(_JordyMoos$elm_clockpicker$ClockPicker$tickRadiusString),
 													_1: {
 														ctor: '::',
-														_0: _elm_lang$svg$Svg_Attributes$cx('0'),
+														_0: _elm_lang$svg$Svg_Attributes$cx(result.cxString),
 														_1: {
 															ctor: '::',
-															_0: _elm_lang$svg$Svg_Attributes$cy('0'),
-															_1: {ctor: '[]'}
+															_0: _elm_lang$svg$Svg_Attributes$cy(result.cyString),
+															_1: {
+																ctor: '::',
+																_0: _elm_lang$svg$Svg_Attributes$fillOpacity('0.5'),
+																_1: {ctor: '[]'}
+															}
 														}
 													}
 												}
 											},
 											{ctor: '[]'}),
-										_1: {ctor: '[]'}
-									}
-								}
-							}
-						}),
-					_1: {
-						ctor: '::',
-						_0: A2(
-							_elm_lang$svg$Svg$rect,
-							{
-								ctor: '::',
-								_0: _elm_lang$html$Html_Attributes$width(_JordyMoos$elm_clockpicker$ClockPicker$diameter),
-								_1: {
-									ctor: '::',
-									_0: _elm_lang$html$Html_Attributes$height(_JordyMoos$elm_clockpicker$ClockPicker$diameter),
-									_1: {
-										ctor: '::',
-										_0: A2(
-											_elm_lang$virtual_dom$VirtualDom$on,
-											'mousemove',
-											A2(_elm_lang$core$Json_Decode$map, _JordyMoos$elm_clockpicker$ClockPicker$MouseMove, _JordyMoos$elm_clockpicker$ClockPicker$offsetPosition)),
 										_1: {
 											ctor: '::',
-											_0: _elm_lang$svg$Svg_Attributes$fillOpacity('0'),
+											_0: A2(
+												_elm_lang$svg$Svg$circle,
+												{
+													ctor: '::',
+													_0: _elm_lang$svg$Svg_Attributes$class('clockpicker-canvas-bearing'),
+													_1: {
+														ctor: '::',
+														_0: _elm_lang$svg$Svg_Attributes$r('2'),
+														_1: {
+															ctor: '::',
+															_0: _elm_lang$svg$Svg_Attributes$cx('0'),
+															_1: {
+																ctor: '::',
+																_0: _elm_lang$svg$Svg_Attributes$cy('0'),
+																_1: {ctor: '[]'}
+															}
+														}
+													}
+												},
+												{ctor: '[]'}),
 											_1: {ctor: '[]'}
 										}
 									}
 								}
-							},
-							{ctor: '[]'}),
-						_1: {ctor: '[]'}
-					}
-				}),
-			_1: {ctor: '[]'}
-		});
+							}),
+						_1: {
+							ctor: '::',
+							_0: A2(
+								_elm_lang$svg$Svg$rect,
+								{
+									ctor: '::',
+									_0: _elm_lang$html$Html_Attributes$width(_JordyMoos$elm_clockpicker$ClockPicker$diameter),
+									_1: {
+										ctor: '::',
+										_0: _elm_lang$html$Html_Attributes$height(_JordyMoos$elm_clockpicker$ClockPicker$diameter),
+										_1: {
+											ctor: '::',
+											_0: A2(
+												_elm_lang$virtual_dom$VirtualDom$on,
+												'mousemove',
+												A2(_elm_lang$core$Json_Decode$map, _JordyMoos$elm_clockpicker$ClockPicker$MouseMove, _JordyMoos$elm_clockpicker$ClockPicker$offsetPosition)),
+											_1: {
+												ctor: '::',
+												_0: _elm_lang$svg$Svg_Attributes$fillOpacity('0'),
+												_1: {ctor: '[]'}
+											}
+										}
+									}
+								},
+								{ctor: '[]'}),
+							_1: {ctor: '[]'}
+						}
+					}),
+				_1: {ctor: '[]'}
+			});
+	});
+var _JordyMoos$elm_clockpicker$ClockPicker$drawMinuteCanvas = function (model) {
+	return A2(
+		_JordyMoos$elm_clockpicker$ClockPicker$drawCanvas,
+		_JordyMoos$elm_clockpicker$ClockPicker$ClickMinute,
+		A4(_JordyMoos$elm_clockpicker$ClockPicker$calculateUnitByPosition, 60, model.settings.minuteStep, false, model.pos));
 };
 var _JordyMoos$elm_clockpicker$ClockPicker$drawHourCanvas = function (model) {
-	var unit = (_elm_lang$core$Basics$toFloat(model.settings.hourStep) / 6) * _elm_lang$core$Basics$pi;
-	var y = _elm_lang$core$Basics$toFloat(model.pos.y) - _JordyMoos$elm_clockpicker$ClockPicker$dialRadius;
-	var x = _elm_lang$core$Basics$toFloat(model.pos.x) - _JordyMoos$elm_clockpicker$ClockPicker$dialRadius;
-	var radianTemp = A2(
-		_elm_lang$core$Basics$atan2,
-		x,
-		_elm_lang$core$Basics$negate(y));
-	var radian = (_elm_lang$core$Native_Utils.cmp(radianTemp, 0) < 0) ? ((_elm_lang$core$Basics$pi * 2) + radianTemp) : radianTemp;
-	var val = _elm_lang$core$Basics$round(radian / unit);
-	var radianRounded = _elm_lang$core$Basics$toFloat(val) * unit;
-	var z = _elm_lang$core$Basics$sqrt((x * x) + (y * y));
-	var isInner = (_elm_lang$core$Native_Utils.cmp(z, (_JordyMoos$elm_clockpicker$ClockPicker$outerRadius + _JordyMoos$elm_clockpicker$ClockPicker$innerRadius) / 2) < 0) ? true : false;
-	var radius = isInner ? _JordyMoos$elm_clockpicker$ClockPicker$innerRadius : _JordyMoos$elm_clockpicker$ClockPicker$outerRadius;
-	var cx = _elm_lang$core$Basics$sin(radianRounded) * radius;
-	var cxString = _elm_lang$core$Basics$toString(cx);
-	var cy = _elm_lang$core$Basics$negate(
-		_elm_lang$core$Basics$cos(radianRounded) * radius);
-	var cyString = _elm_lang$core$Basics$toString(cy);
+	var allowInner = !model.settings.twelveHour;
 	return A2(
-		_elm_lang$html$Html$div,
-		{
-			ctor: '::',
-			_0: _elm_lang$html$Html_Attributes$class('clockpicker-canvas'),
-			_1: {
-				ctor: '::',
-				_0: _elm_lang$html$Html_Events$onClick(_JordyMoos$elm_clockpicker$ClockPicker$ClickHour),
-				_1: {ctor: '[]'}
-			}
-		},
-		{
-			ctor: '::',
-			_0: A2(
-				_elm_lang$svg$Svg$svg,
-				{
-					ctor: '::',
-					_0: _elm_lang$html$Html_Attributes$width(_JordyMoos$elm_clockpicker$ClockPicker$diameter),
-					_1: {
-						ctor: '::',
-						_0: _elm_lang$html$Html_Attributes$height(_JordyMoos$elm_clockpicker$ClockPicker$diameter),
-						_1: {ctor: '[]'}
-					}
-				},
-				{
-					ctor: '::',
-					_0: A2(
-						_elm_lang$svg$Svg$g,
-						{
-							ctor: '::',
-							_0: _elm_lang$svg$Svg_Attributes$transform(
-								A2(
-									_elm_lang$core$Basics_ops['++'],
-									'translate(',
-									A2(
-										_elm_lang$core$Basics_ops['++'],
-										_JordyMoos$elm_clockpicker$ClockPicker$dialRadiusString,
-										A2(
-											_elm_lang$core$Basics_ops['++'],
-											',',
-											A2(_elm_lang$core$Basics_ops['++'], _JordyMoos$elm_clockpicker$ClockPicker$dialRadiusString, ')'))))),
-							_1: {ctor: '[]'}
-						},
-						{
-							ctor: '::',
-							_0: A2(
-								_elm_lang$svg$Svg$line,
-								{
-									ctor: '::',
-									_0: _elm_lang$svg$Svg_Attributes$x1('0'),
-									_1: {
-										ctor: '::',
-										_0: _elm_lang$svg$Svg_Attributes$y1('0'),
-										_1: {
-											ctor: '::',
-											_0: _elm_lang$svg$Svg_Attributes$x2(cxString),
-											_1: {
-												ctor: '::',
-												_0: _elm_lang$svg$Svg_Attributes$y2(cyString),
-												_1: {ctor: '[]'}
-											}
-										}
-									}
-								},
-								{ctor: '[]'}),
-							_1: {
-								ctor: '::',
-								_0: A2(
-									_elm_lang$svg$Svg$circle,
-									{
-										ctor: '::',
-										_0: _elm_lang$svg$Svg_Attributes$class('clockpicker-canvas-fg'),
-										_1: {
-											ctor: '::',
-											_0: _elm_lang$svg$Svg_Attributes$r('3.5'),
-											_1: {
-												ctor: '::',
-												_0: _elm_lang$svg$Svg_Attributes$cx(cxString),
-												_1: {
-													ctor: '::',
-													_0: _elm_lang$svg$Svg_Attributes$cy(cyString),
-													_1: {ctor: '[]'}
-												}
-											}
-										}
-									},
-									{ctor: '[]'}),
-								_1: {
-									ctor: '::',
-									_0: A2(
-										_elm_lang$svg$Svg$circle,
-										{
-											ctor: '::',
-											_0: _elm_lang$svg$Svg_Attributes$class('clockpicker-canvas-bg'),
-											_1: {
-												ctor: '::',
-												_0: _elm_lang$svg$Svg_Attributes$r(_JordyMoos$elm_clockpicker$ClockPicker$tickRadiusString),
-												_1: {
-													ctor: '::',
-													_0: _elm_lang$svg$Svg_Attributes$cx(cxString),
-													_1: {
-														ctor: '::',
-														_0: _elm_lang$svg$Svg_Attributes$cy(cyString),
-														_1: {
-															ctor: '::',
-															_0: _elm_lang$svg$Svg_Attributes$fillOpacity('0.5'),
-															_1: {ctor: '[]'}
-														}
-													}
-												}
-											}
-										},
-										{ctor: '[]'}),
-									_1: {
-										ctor: '::',
-										_0: A2(
-											_elm_lang$svg$Svg$circle,
-											{
-												ctor: '::',
-												_0: _elm_lang$svg$Svg_Attributes$class('clockpicker-canvas-bearing'),
-												_1: {
-													ctor: '::',
-													_0: _elm_lang$svg$Svg_Attributes$r('2'),
-													_1: {
-														ctor: '::',
-														_0: _elm_lang$svg$Svg_Attributes$cx('0'),
-														_1: {
-															ctor: '::',
-															_0: _elm_lang$svg$Svg_Attributes$cy('0'),
-															_1: {ctor: '[]'}
-														}
-													}
-												}
-											},
-											{ctor: '[]'}),
-										_1: {ctor: '[]'}
-									}
-								}
-							}
-						}),
-					_1: {
-						ctor: '::',
-						_0: A2(
-							_elm_lang$svg$Svg$rect,
-							{
-								ctor: '::',
-								_0: _elm_lang$html$Html_Attributes$width(_JordyMoos$elm_clockpicker$ClockPicker$diameter),
-								_1: {
-									ctor: '::',
-									_0: _elm_lang$html$Html_Attributes$height(_JordyMoos$elm_clockpicker$ClockPicker$diameter),
-									_1: {
-										ctor: '::',
-										_0: A2(
-											_elm_lang$virtual_dom$VirtualDom$on,
-											'mousemove',
-											A2(_elm_lang$core$Json_Decode$map, _JordyMoos$elm_clockpicker$ClockPicker$MouseMove, _JordyMoos$elm_clockpicker$ClockPicker$offsetPosition)),
-										_1: {
-											ctor: '::',
-											_0: _elm_lang$svg$Svg_Attributes$fillOpacity('0'),
-											_1: {ctor: '[]'}
-										}
-									}
-								}
-							},
-							{ctor: '[]'}),
-						_1: {ctor: '[]'}
-					}
-				}),
-			_1: {ctor: '[]'}
-		});
+		_JordyMoos$elm_clockpicker$ClockPicker$drawCanvas,
+		_JordyMoos$elm_clockpicker$ClockPicker$ClickHour,
+		A4(_JordyMoos$elm_clockpicker$ClockPicker$calculateUnitByPosition, 12, model.settings.minuteStep, allowInner, model.pos));
 };
 var _JordyMoos$elm_clockpicker$ClockPicker$DragEnd = function (a) {
 	return {ctor: 'DragEnd', _0: a};
@@ -10062,58 +10167,6 @@ var _JordyMoos$elm_clockpicker$ClockPicker$DragAt = function (a) {
 };
 var _JordyMoos$elm_clockpicker$ClockPicker$SetMinute = function (a) {
 	return {ctor: 'SetMinute', _0: a};
-};
-var _JordyMoos$elm_clockpicker$ClockPicker$drawMinuteTick = function (tick) {
-	var radian = (_elm_lang$core$Basics$toFloat(tick) / 6) * _elm_lang$core$Basics$pi;
-	var radius = _JordyMoos$elm_clockpicker$ClockPicker$outerRadius;
-	var left = (_JordyMoos$elm_clockpicker$ClockPicker$dialRadius + (_elm_lang$core$Basics$sin(radian) * radius)) - _JordyMoos$elm_clockpicker$ClockPicker$tickRadius;
-	var top = (_JordyMoos$elm_clockpicker$ClockPicker$dialRadius - (_elm_lang$core$Basics$cos(radian) * radius)) - _JordyMoos$elm_clockpicker$ClockPicker$tickRadius;
-	var minute = tick * 5;
-	return A2(
-		_elm_lang$html$Html$div,
-		{
-			ctor: '::',
-			_0: _elm_lang$html$Html_Attributes$class('clockpicker-tick'),
-			_1: {
-				ctor: '::',
-				_0: _elm_lang$html$Html_Attributes$style(
-					{
-						ctor: '::',
-						_0: {
-							ctor: '_Tuple2',
-							_0: 'left',
-							_1: A2(
-								_elm_lang$core$Basics_ops['++'],
-								_elm_lang$core$Basics$toString(left),
-								'px')
-						},
-						_1: {
-							ctor: '::',
-							_0: {
-								ctor: '_Tuple2',
-								_0: 'top',
-								_1: A2(
-									_elm_lang$core$Basics_ops['++'],
-									_elm_lang$core$Basics$toString(top),
-									'px')
-							},
-							_1: {ctor: '[]'}
-						}
-					}),
-				_1: {
-					ctor: '::',
-					_0: _elm_lang$html$Html_Events$onClick(
-						_JordyMoos$elm_clockpicker$ClockPicker$SetMinute(minute)),
-					_1: {ctor: '[]'}
-				}
-			}
-		},
-		{
-			ctor: '::',
-			_0: _elm_lang$html$Html$text(
-				_JordyMoos$elm_clockpicker$ClockPicker$formatMinute(minute)),
-			_1: {ctor: '[]'}
-		});
 };
 var _JordyMoos$elm_clockpicker$ClockPicker$drawMinuteTicks = function (model) {
 	return A2(
@@ -10125,7 +10178,7 @@ var _JordyMoos$elm_clockpicker$ClockPicker$drawMinuteTicks = function (model) {
 		},
 		A2(
 			_elm_lang$core$List$map,
-			_JordyMoos$elm_clockpicker$ClockPicker$drawMinuteTick,
+			A4(_JordyMoos$elm_clockpicker$ClockPicker$drawTick, _JordyMoos$elm_clockpicker$ClockPicker$SetMinute, _JordyMoos$elm_clockpicker$ClockPicker$formatMinute, 60, 5),
 			A2(_elm_lang$core$List$range, 1, (60 / 5) | 0)));
 };
 var _JordyMoos$elm_clockpicker$ClockPicker$viewPopoverContentMinute = function (model) {
@@ -10160,73 +10213,27 @@ var _JordyMoos$elm_clockpicker$ClockPicker$viewPopoverContentMinute = function (
 				}),
 			_1: {
 				ctor: '::',
-				_0: A2(
-					_elm_lang$html$Html$span,
-					{
-						ctor: '::',
-						_0: _elm_lang$html$Html_Attributes$class('clockpicker-am-pm-clock'),
-						_1: {ctor: '[]'}
-					},
-					{ctor: '[]'}),
-				_1: {ctor: '[]'}
+				_0: _JordyMoos$elm_clockpicker$ClockPicker$viewAmPm(model),
+				_1: {
+					ctor: '::',
+					_0: A2(
+						_elm_lang$html$Html$span,
+						{
+							ctor: '::',
+							_0: _elm_lang$html$Html_Attributes$class('clockpicker-am-pm-clock'),
+							_1: {ctor: '[]'}
+						},
+						{ctor: '[]'}),
+					_1: {ctor: '[]'}
+				}
 			}
 		});
 };
 var _JordyMoos$elm_clockpicker$ClockPicker$SetHour = function (a) {
 	return {ctor: 'SetHour', _0: a};
 };
-var _JordyMoos$elm_clockpicker$ClockPicker$drawHourTick = function (tick) {
-	var radian = (_elm_lang$core$Basics$toFloat(tick) / 6) * _elm_lang$core$Basics$pi;
-	var radius = (_elm_lang$core$Native_Utils.cmp(tick, 12) > 0) ? _JordyMoos$elm_clockpicker$ClockPicker$innerRadius : _JordyMoos$elm_clockpicker$ClockPicker$outerRadius;
-	var left = (_JordyMoos$elm_clockpicker$ClockPicker$dialRadius + (_elm_lang$core$Basics$sin(radian) * radius)) - _JordyMoos$elm_clockpicker$ClockPicker$tickRadius;
-	var top = (_JordyMoos$elm_clockpicker$ClockPicker$dialRadius - (_elm_lang$core$Basics$cos(radian) * radius)) - _JordyMoos$elm_clockpicker$ClockPicker$tickRadius;
-	return A2(
-		_elm_lang$html$Html$div,
-		{
-			ctor: '::',
-			_0: _elm_lang$html$Html_Attributes$class('clockpicker-tick'),
-			_1: {
-				ctor: '::',
-				_0: _elm_lang$html$Html_Attributes$style(
-					{
-						ctor: '::',
-						_0: {
-							ctor: '_Tuple2',
-							_0: 'left',
-							_1: A2(
-								_elm_lang$core$Basics_ops['++'],
-								_elm_lang$core$Basics$toString(left),
-								'px')
-						},
-						_1: {
-							ctor: '::',
-							_0: {
-								ctor: '_Tuple2',
-								_0: 'top',
-								_1: A2(
-									_elm_lang$core$Basics_ops['++'],
-									_elm_lang$core$Basics$toString(top),
-									'px')
-							},
-							_1: {ctor: '[]'}
-						}
-					}),
-				_1: {
-					ctor: '::',
-					_0: _elm_lang$html$Html_Events$onClick(
-						_JordyMoos$elm_clockpicker$ClockPicker$SetHour(tick)),
-					_1: {ctor: '[]'}
-				}
-			}
-		},
-		{
-			ctor: '::',
-			_0: _elm_lang$html$Html$text(
-				_JordyMoos$elm_clockpicker$ClockPicker$formatHour(tick)),
-			_1: {ctor: '[]'}
-		});
-};
 var _JordyMoos$elm_clockpicker$ClockPicker$drawHourTicks = function (model) {
+	var rangeMax = model.settings.twelveHour ? 12 : 24;
 	return A2(
 		_elm_lang$html$Html$div,
 		{
@@ -10236,8 +10243,8 @@ var _JordyMoos$elm_clockpicker$ClockPicker$drawHourTicks = function (model) {
 		},
 		A2(
 			_elm_lang$core$List$map,
-			_JordyMoos$elm_clockpicker$ClockPicker$drawHourTick,
-			A2(_elm_lang$core$List$range, 1, 24)));
+			A4(_JordyMoos$elm_clockpicker$ClockPicker$drawTick, _JordyMoos$elm_clockpicker$ClockPicker$SetHour, _JordyMoos$elm_clockpicker$ClockPicker$formatHour, 12, 1),
+			A2(_elm_lang$core$List$range, 1, rangeMax)));
 };
 var _JordyMoos$elm_clockpicker$ClockPicker$viewPopoverContentHour = function (model) {
 	return A2(
@@ -10271,14 +10278,7 @@ var _JordyMoos$elm_clockpicker$ClockPicker$viewPopoverContentHour = function (mo
 				}),
 			_1: {
 				ctor: '::',
-				_0: A2(
-					_elm_lang$html$Html$span,
-					{
-						ctor: '::',
-						_0: _elm_lang$html$Html_Attributes$class('clockpicker-am-pm-clock'),
-						_1: {ctor: '[]'}
-					},
-					{ctor: '[]'}),
+				_0: _JordyMoos$elm_clockpicker$ClockPicker$viewAmPm(model),
 				_1: {ctor: '[]'}
 			}
 		});
@@ -10332,7 +10332,7 @@ var _JordyMoos$elm_clockpicker$ClockPicker$drawHourView = function (model) {
 							},
 							{
 								ctor: '::',
-								_0: _elm_lang$html$Html$text('Done'),
+								_0: _elm_lang$html$Html$text(model.settings.doneText),
 								_1: {ctor: '[]'}
 							}),
 						_1: {ctor: '[]'}
@@ -10390,8 +10390,8 @@ var _JordyMoos$elm_clockpicker$ClockPicker$drawMinuteView = function (model) {
 		});
 };
 var _JordyMoos$elm_clockpicker$ClockPicker$clockPickerWrapper = function (model) {
-	var _p9 = model.state;
-	switch (_p9.ctor) {
+	var _p13 = model.state;
+	switch (_p13.ctor) {
 		case 'Closed':
 			return _elm_lang$html$Html$text('');
 		case 'HourView':
@@ -10401,9 +10401,9 @@ var _JordyMoos$elm_clockpicker$ClockPicker$clockPickerWrapper = function (model)
 	}
 };
 var _JordyMoos$elm_clockpicker$ClockPicker$OpenPicker = {ctor: 'OpenPicker'};
-var _JordyMoos$elm_clockpicker$ClockPicker$view = function (_p10) {
-	var _p11 = _p10;
-	var _p12 = _p11._0;
+var _JordyMoos$elm_clockpicker$ClockPicker$view = function (_p14) {
+	var _p15 = _p14;
+	var _p16 = _p15._0;
 	return A2(
 		_elm_lang$html$Html$div,
 		{
@@ -10421,17 +10421,49 @@ var _JordyMoos$elm_clockpicker$ClockPicker$view = function (_p10) {
 					_1: {
 						ctor: '::',
 						_0: _elm_lang$html$Html_Attributes$value(
-							_JordyMoos$elm_clockpicker$ClockPicker$formatTime(_p12)),
+							_JordyMoos$elm_clockpicker$ClockPicker$formatTime(_p16)),
 						_1: {ctor: '[]'}
 					}
 				},
 				{ctor: '[]'}),
 			_1: {
 				ctor: '::',
-				_0: _JordyMoos$elm_clockpicker$ClockPicker$clockPickerWrapper(_p12),
+				_0: _JordyMoos$elm_clockpicker$ClockPicker$clockPickerWrapper(_p16),
 				_1: {ctor: '[]'}
 			}
 		});
+};
+var _JordyMoos$elm_clockpicker$ClockPicker$NewTime = function (a) {
+	return {ctor: 'NewTime', _0: a};
+};
+var _JordyMoos$elm_clockpicker$ClockPicker$init = function (settings) {
+	var _p17 = function () {
+		var _p18 = settings.startTime;
+		switch (_p18.ctor) {
+			case 'EmptyStartTime':
+				return {ctor: '_Tuple2', _0: _JordyMoos$elm_clockpicker$ClockPicker$emptyTime, _1: _elm_lang$core$Platform_Cmd$none};
+			case 'SetStartTime':
+				return {
+					ctor: '_Tuple2',
+					_0: A2(_JordyMoos$elm_clockpicker$ClockPicker$Time, _p18._0, _p18._1),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+			default:
+				return {
+					ctor: '_Tuple2',
+					_0: _JordyMoos$elm_clockpicker$ClockPicker$emptyTime,
+					_1: A2(_elm_lang$core$Task$perform, _JordyMoos$elm_clockpicker$ClockPicker$NewTime, _elm_lang$core$Time$now)
+				};
+		}
+	}();
+	var startTimeModel = _p17._0;
+	var startTimeCmd = _p17._1;
+	return {
+		ctor: '_Tuple2',
+		_0: _JordyMoos$elm_clockpicker$ClockPicker$ClockPicker(
+			A4(_JordyMoos$elm_clockpicker$ClockPicker$Model, _JordyMoos$elm_clockpicker$ClockPicker$Closed, startTimeModel, _JordyMoos$elm_clockpicker$ClockPicker$emptyPosition, settings)),
+		_1: startTimeCmd
+	};
 };
 var _JordyMoos$elm_clockpicker$ClockPicker$NoOp = {ctor: 'NoOp'};
 
@@ -10443,7 +10475,10 @@ var _JordyMoos$elm_clockpicker$Simple$ToClockPicker = function (a) {
 	return {ctor: 'ToClockPicker', _0: a};
 };
 var _JordyMoos$elm_clockpicker$Simple$init = function () {
-	var _p0 = _JordyMoos$elm_clockpicker$ClockPicker$init(_JordyMoos$elm_clockpicker$ClockPicker$defaultSettings);
+	var _p0 = _JordyMoos$elm_clockpicker$ClockPicker$init(
+		_elm_lang$core$Native_Utils.update(
+			_JordyMoos$elm_clockpicker$ClockPicker$defaultSettings,
+			{startTime: _JordyMoos$elm_clockpicker$ClockPicker$NowStartTime}));
 	var clockPicker = _p0._0;
 	var clockPickerCmd = _p0._1;
 	return A2(
