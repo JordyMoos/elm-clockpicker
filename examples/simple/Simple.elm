@@ -1,7 +1,9 @@
 module Simple exposing (main)
 
-import ClockPicker exposing (Time, StartTime(..), defaultSettings)
+import ClockPicker exposing (StartTime(..), Time, defaultSettings)
 import Html exposing (Html, div, h1, text)
+import Browser
+import String
 
 
 type Msg
@@ -20,33 +22,35 @@ init =
         ( clockPicker, clockPickerCmd ) =
             ClockPicker.init { defaultSettings | startTime = NowStartTime }
     in
-        { time = Nothing
-        , clockPicker = clockPicker
-        }
-            ! [ Cmd.map ToClockPicker clockPickerCmd ]
+    ( { time = Nothing
+      , clockPicker = clockPicker
+      }
+    , Cmd.map ToClockPicker clockPickerCmd
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ({ clockPicker } as model) =
     case msg of
-        ToClockPicker msg ->
+        ToClockPicker innerMsg ->
             let
                 ( newClockPicker, clockPickerCmd, newTime ) =
-                    ClockPicker.update msg clockPicker
+                    ClockPicker.update innerMsg clockPicker
 
                 time =
                     case newTime of
                         Nothing ->
                             model.time
 
-                        time ->
-                            time
+                        _ ->
+                            newTime
             in
-                { model
-                    | time = time
-                    , clockPicker = newClockPicker
-                }
-                    ! [ Cmd.map ToClockPicker clockPickerCmd ]
+            ( { model
+                | time = time
+                , clockPicker = newClockPicker
+              }
+            , Cmd.map ToClockPicker clockPickerCmd
+            )
 
 
 view : Model -> Html Msg
@@ -56,23 +60,23 @@ view ({ time, clockPicker } as model) =
             Nothing ->
                 h1 [] [ text "Pick a time" ]
 
-            Just time ->
+            Just {hour, minute} ->
                 h1 []
                     [ text <|
                         "Selected hour: "
-                            ++ toString time.hour
+                            ++ String.fromInt hour
                             ++ " and minute: "
-                            ++ toString time.minute
+                            ++ String.fromInt minute
                     ]
         , ClockPicker.view clockPicker
             |> Html.map ToClockPicker
         ]
 
 
-main : Program Never Model Msg
+main : Program () Model Msg
 main =
-    Html.program
-        { init = init
+    Browser.element
+        { init = always init
         , update = update
         , view = view
         , subscriptions = always Sub.none
