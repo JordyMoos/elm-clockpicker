@@ -202,7 +202,7 @@ type State
 -}
 type Msg
     = NoOp
-    | NewTime CoreTime.Time
+    | NewTime CoreTime.Posix
     | OpenPicker
     | ClosePicker
     | SetHour Int
@@ -259,13 +259,12 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
             , Cmd.none
             )
 
-        NewTime newTime ->
+        NewTime posix ->
             let
-                hours =
-                    modBy 24 (ceiling <| CoreTime.inHours newTime)
+                hours = CoreTime.toHour CoreTime.utc posix
 
                 minutes =
-                    modBy 60 (floor <| CoreTime.inMinutes newTime)
+                    CoreTime.toMinute CoreTime.utc posix
 
                 time =
                     Time hours minutes
