@@ -2,6 +2,7 @@ module Simple exposing (main)
 
 import ClockPicker exposing (StartTime(..), Time, defaultSettings)
 import Html exposing (Html, div, h1, text)
+import Browser
 
 
 type Msg
@@ -71,10 +72,10 @@ view ({ time, clockPicker } as model) =
         ]
 
 
-main : Program Never Model Msg
+main : Program () Model Msg
 main =
-    Html.program
-        { init = init
+    Browser.element
+        { init = always init
         , update = update
         , view = view
         , subscriptions = always Sub.none
