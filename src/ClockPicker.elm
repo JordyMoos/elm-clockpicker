@@ -266,10 +266,10 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
                 minutes =
                     CoreTime.toMinute CoreTime.utc posix
 
-                time =
+                updatedTime =
                     Time hours minutes
             in
-            ( { model | time = time }
+            ( { model | time = updatedTime }
             , Cmd.none
             )
 
