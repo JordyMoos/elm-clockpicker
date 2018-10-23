@@ -59,12 +59,12 @@ tickRadius =
 
 dialRadiusString : String
 dialRadiusString =
-    toString dialRadius
+    String.fromFloat dialRadius
 
 
 tickRadiusString : String
 tickRadiusString =
-    toString tickRadius
+    String.fromFloat tickRadius
 
 
 diameter : Int
@@ -464,10 +464,10 @@ calculateUnitByPosition units steps allowInner pos =
             negate <| cos radianRounded * radius
 
         cxString =
-            toString cx
+            String.fromFloat cx
 
         cyString =
-            toString cy
+            String.fromFloat cy
     in
     FromPositionResult value isInner cxString cyString
 
@@ -550,8 +550,8 @@ drawTick onClickMsg formatter outerRadiusMax visualStepSize tick =
     in
     div
         [ class "clockpicker-tick"
-        , style "left" (toString left ++ "px")
-        , style "top" (toString top ++ "px")
+        , style "left" (String.fromFloat left ++ "px")
+        , style "top" (String.fromFloat top ++ "px")
         , onClick (onClickMsg actualValue)
         ]
         [ text (formatter actualValue) ]
@@ -773,7 +773,7 @@ formatMinute minute =
             "00"
 
         _ ->
-            toString minute
+            String.fromInt minute
 
 
 formatMinuteFull : Int -> String
@@ -782,10 +782,10 @@ formatMinuteFull minute =
         "00"
 
     else if minute < 10 then
-        "0" ++ toString minute
+        "0" ++ String.fromInt minute
 
     else
-        toString minute
+        String.fromInt minute
 
 
 viewPopoverContentHour : Model -> Html Msg
@@ -834,7 +834,7 @@ formatHour hour =
             "00"
 
         _ ->
-            toString hour
+            String.fromInt hour
 
 
 formatHourFull : Int -> String
@@ -843,10 +843,10 @@ formatHourFull hour =
         "00"
 
     else if hour < 10 then
-        "0" ++ toString hour
+        "0" ++ String.fromInt hour
 
     else
-        toString hour
+        String.fromInt hour
 
 
 formatHourTwelveHourFull : Int -> String
