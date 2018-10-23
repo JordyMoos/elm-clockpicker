@@ -255,8 +255,9 @@ update : Msg -> ClockPicker -> ( ClockPicker, Cmd Msg, Maybe Time )
 update msg (ClockPicker ({ state, pos, time, settings } as model)) =
     case msg of
         NoOp ->
-            ( model
+            ( ClockPicker model
             , Cmd.none
+            , Nothing
             )
 
         NewTime posix ->
@@ -269,18 +270,21 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
                 updatedTime =
                     Time hours minutes
             in
-            ( { model | time = updatedTime }
+            ( ClockPicker { model | time = updatedTime }
             , Cmd.none
+            , Nothing
             )
 
         OpenPicker ->
-            ( { model | state = HourView }
+            ( ClockPicker { model | state = HourView }
             , Cmd.none
+            , Nothing
             )
 
         ClosePicker ->
-            ( { model | state = Closed }
+            ( ClockPicker { model | state = Closed }
             , Cmd.none
+            , Nothing
             )
 
         ClickHour ->
@@ -377,28 +381,33 @@ update msg (ClockPicker ({ state, pos, time, settings } as model)) =
             )
 
         DragAt position ->
-            ( { model | pos = position }
+            ( ClockPicker { model | pos = position }
             , Cmd.none
+            , Nothing
             )
 
         DragEnd position ->
-            ( { model | pos = position }
+            ( ClockPicker { model | pos = position }
             , Cmd.none
+            , Nothing
             )
 
         MouseMove position ->
-            ( { model | pos = position }
+            ( ClockPicker { model | pos = position }
             , Cmd.none
+            , Nothing
             )
 
         ShowHour ->
-            ( { model | state = HourView }
+            ( ClockPicker { model | state = HourView }
             , Cmd.none
+            , Nothing
             )
 
         ShowMinute ->
-            ( { model | state = MinuteView }
+            ( ClockPicker { model | state = MinuteView }
             , Cmd.none
+            , Nothing
             )
 
 
