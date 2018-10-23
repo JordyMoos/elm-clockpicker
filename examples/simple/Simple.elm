@@ -3,6 +3,7 @@ module Simple exposing (main)
 import ClockPicker exposing (StartTime(..), Time, defaultSettings)
 import Html exposing (Html, div, h1, text)
 import Browser
+import String
 
 
 type Msg
@@ -31,18 +32,18 @@ init =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ({ clockPicker } as model) =
     case msg of
-        ToClockPicker msg ->
+        ToClockPicker clockPickerMsg ->
             let
                 ( newClockPicker, clockPickerCmd, newTime ) =
-                    ClockPicker.update msg clockPicker
+                    ClockPicker.update clockPickerMsg clockPicker
 
                 time =
                     case newTime of
                         Nothing ->
                             model.time
 
-                        time ->
-                            time
+                        _ ->
+                            newTime
             in
             ( { model
                 | time = time
@@ -59,13 +60,13 @@ view ({ time, clockPicker } as model) =
             Nothing ->
                 h1 [] [ text "Pick a time" ]
 
-            Just time ->
+            Just {hour, minute} ->
                 h1 []
                     [ text <|
                         "Selected hour: "
-                            ++ toString time.hour
+                            ++ String.fromInt hour
                             ++ " and minute: "
-                            ++ toString time.minute
+                            ++ String.fromInt minute
                     ]
         , ClockPicker.view clockPicker
             |> Html.map ToClockPicker
