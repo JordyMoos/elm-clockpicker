@@ -1,6 +1,6 @@
 module Simple exposing (main)
 
-import ClockPicker exposing (Time, StartTime(..), defaultSettings)
+import ClockPicker exposing (StartTime(..), Time, defaultSettings)
 import Html exposing (Html, div, h1, text)
 
 
@@ -20,10 +20,11 @@ init =
         ( clockPicker, clockPickerCmd ) =
             ClockPicker.init { defaultSettings | startTime = NowStartTime }
     in
-        { time = Nothing
-        , clockPicker = clockPicker
-        }
-            ! [ Cmd.map ToClockPicker clockPickerCmd ]
+    ( { time = Nothing
+      , clockPicker = clockPicker
+      }
+    , Cmd.map ToClockPicker clockPickerCmd
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -42,11 +43,12 @@ update msg ({ clockPicker } as model) =
                         time ->
                             time
             in
-                { model
-                    | time = time
-                    , clockPicker = newClockPicker
-                }
-                    ! [ Cmd.map ToClockPicker clockPickerCmd ]
+            ( { model
+                | time = time
+                , clockPicker = newClockPicker
+              }
+            , Cmd.map ToClockPicker clockPickerCmd
+            )
 
 
 view : Model -> Html Msg
