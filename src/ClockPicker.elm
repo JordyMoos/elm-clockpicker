@@ -30,7 +30,6 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Json.Decode as Json
-import Mouse exposing (..)
 import Svg
 import Svg.Attributes
 import Task
@@ -71,6 +70,12 @@ tickRadiusString =
 diameter : Int
 diameter =
     round <| dialRadius * 2
+
+
+type alias Position =
+    { x : Int
+    , y : Int
+    }
 
 
 type alias Model =
@@ -211,11 +216,6 @@ type Msg
     | ClickPm
     | ShowHour
     | ShowMinute
-
-
-(!) : Model -> List (Cmd Msg) -> ( ClockPicker, Cmd Msg, Maybe Time )
-(!) model cmds =
-    ( ClockPicker model, Cmd.batch cmds, Nothing )
 
 
 {-| Initialize a ClockPicker given a Settings record.
