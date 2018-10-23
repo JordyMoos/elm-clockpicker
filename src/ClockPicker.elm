@@ -612,7 +612,7 @@ drawCanvas onClickMsg result =
             , Svg.rect
                 [ width diameter
                 , height diameter
-                , VirtualDom.on "mousemove" (Json.map MouseMove offsetPosition)
+                , VirtualDom.on "mousemove" <| VirtualDom.Normal (Json.map MouseMove offsetPosition)
                 , Svg.Attributes.fillOpacity "0"
                 ]
                 []
